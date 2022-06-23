@@ -4,6 +4,7 @@ import { LocalStrategy } from './local.strategy';
 import { UsersModule } from './../users/users.module';
 import { forwardRef, Module } from '@nestjs/common';
 import { AuthService } from './auth.service';
+import { AdminStrategy } from './admin.strategy';
 
 @Module({
   imports: [
@@ -15,7 +16,7 @@ import { AuthService } from './auth.service';
     }),
     forwardRef(() => UsersModule),
   ],
-  providers: [AuthService, LocalStrategy],
-  exports: [AuthService, LocalStrategy],
+  providers: [AuthService, LocalStrategy, AdminStrategy],
+  exports: [AuthService, LocalStrategy, AdminStrategy],
 })
 export class AuthModule {}
