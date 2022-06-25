@@ -1,10 +1,6 @@
 import { User } from './../users/users.schema';
 import { JwtService } from '@nestjs/jwt';
-import {
-  forwardRef,
-  Inject,
-  Injectable,
-} from '@nestjs/common';
+import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { UsersService } from 'src/users/users.service';
 import * as bcrypt from 'bcrypt';
 @Injectable()
@@ -20,7 +16,7 @@ export class AuthService {
     pass: string,
     isAdmin = false,
   ): Promise<any> {
-    const user: User = await this.userService.find({ email })[0];
+    const user: User = await this.userService.findByEmail(email);
     if (user && user.password && (await bcrypt.compare(pass, user.password))) {
       if (isAdmin && user.position !== 'admin') {
         return null;
@@ -34,7 +30,8 @@ export class AuthService {
     return null;
   }
 
-  async login(user: any) {
+  async login(user: User) {
+    if (user.password) delete user.password;
     return {
       token: this.jwtService.sign(user),
       user,

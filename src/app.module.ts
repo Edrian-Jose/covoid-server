@@ -41,7 +41,7 @@ import { DataModule } from './data/data.module';
       inject: [ConfigService],
       useFactory: async (config: ConfigService) => ({
         secret: config.get<string>('JWT_SECRET'),
-        signOptions: { expiresIn: '60s' },
+        signOptions: { expiresIn: '7d' },
       }),
     }),
     UsersModule,

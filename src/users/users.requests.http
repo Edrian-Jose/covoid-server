@@ -1,0 +1,18 @@
+### Add user account
+POST http://localhost:3000/users/add/
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImVkcmlhbmpvc2VmZXJyZXJAZ21haWwuY29tIiwicG9zaXRpb24iOiJhZG1pbiIsImlhdCI6MTY1NjE0NjE0NiwiZXhwIjoxNjU2MTQ2MjA2fQ.Hyi0uwbZnCr8lFux5pTofhlOo8-phQBmSq6rTZ4iF0E
+
+{
+    "email": "edrianj@gmail.com",
+    "position": "admin"
+}
+
+### Update user account
+POST http://localhost:3000/users/update/
+Content-Type: application/json
+
+{
+    "_id": "62b6d3ccace9677cf00d08fa",
+    "position": "none"
+}
