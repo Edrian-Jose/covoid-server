@@ -8,11 +8,22 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImVkcmlhb
     "position": "admin"
 }
 
-### Update user account
-POST http://localhost:3000/users/update/
+### Create user account
+POST http://localhost:3000/users/create/
 Content-Type: application/json
 
 {
-    "_id": "62b6d3ccace9677cf00d08fa",
-    "position": "none"
+    "email": "edrianjoseferrer@gmail.com",
+    "name": "Edrian Ferrer",
+    "password": "edrian"
+}
+
+### Update user account
+POST http://localhost:3000/users/update/
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImVkcmlhbmpvc2VmZXJyZXJAZ21haWwuY29tIiwicG9zaXRpb24iOiJhZG1pbiIsImlhdCI6MTY1NjE0NjE0NiwiZXhwIjoxNjU2MTQ2MjA2fQ.Hyi0uwbZnCr8lFux5pTofhlOo8-phQBmSq6rTZ4iF0E
+
+{
+    "_id": "62b6c8e2e1925abb6225a7f3",
+    "name": "Edrian Jose Ferrer"
 }

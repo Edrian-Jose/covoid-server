@@ -23,6 +23,7 @@ export class UsersService {
     return await this.userModel.findByIdAndUpdate(
       updateUserDto._id,
       updateUserDto,
+      { new: true },
     );
   }
 

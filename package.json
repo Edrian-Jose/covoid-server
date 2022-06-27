@@ -38,6 +38,7 @@
     "bull": "^4.8.4",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.13.2",
+    "moment": "^2.29.3",
     "mongoose": "^6.4.0",
     "nanoid": "^4.0.0",
     "node-onvif-ts": "^0.1.7",

@@ -1,5 +1,11 @@
 import { User } from './../users.schema';
-import { IsEmail, IsNotEmpty, IsString, IsMongoId } from 'class-validator';
+import {
+  IsEmail,
+  IsNotEmpty,
+  IsString,
+  IsMongoId,
+  IsNumber,
+} from 'class-validator';
 
 export class UpdateUserDto implements User {
   @IsMongoId()
@@ -7,17 +13,17 @@ export class UpdateUserDto implements User {
   _id: string;
 
   @IsString()
-  @IsNotEmpty()
   name?: string;
 
   @IsString()
-  @IsNotEmpty()
   position?: string;
 
   @IsEmail()
   email?: string;
 
   @IsString()
-  @IsNotEmpty()
   password?: string;
+
+  @IsNumber()
+  registeredAt?: number;
 }

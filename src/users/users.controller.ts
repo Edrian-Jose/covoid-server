@@ -8,13 +8,13 @@ import {
   UnauthorizedException,
   Request,
   NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
 import { AuthService } from 'src/auth/auth.service';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UsersService } from './users.service';
-
 @Controller('users')
 export class UsersController {
   constructor(
@@ -33,11 +33,38 @@ export class UsersController {
     return await this.authService.login({ email, position });
   }
 
+  @Post('/create')
+  async createUser(@Body() body: UpdateUserDto) {
+    const user = await this.userService.findByEmail(body.email);
+    if (!user) {
+      throw new NotFoundException(
+        'Emails needs to be added by the admin first',
+      );
+    }
+
+    if (user.registeredAt) {
+      throw new BadRequestException(`${body.email} is already registered`);
+    }
+    body._id = user._id;
+    const { email, name, position } = await this.userService.update({
+      ...body,
+      registeredAt: Date.now(),
+    });
+
+    return await this.authService.login({ email, name, position });
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Post('/update')
-  async createUser(@Body() userBody: UpdateUserDto) {
+  async updateUser(@Body() userBody: UpdateUserDto, @Request() req) {
     const user = await this.userService.findById(userBody._id);
     if (!user) {
       throw new NotFoundException('User is not registered');
+    }
+
+    if (req.user.email !== user.email) {
+      console.log(req.user, userBody);
+      throw new UnauthorizedException('You cannot change other users info');
     }
 
     const { email, name, position } = await this.userService.update(userBody);

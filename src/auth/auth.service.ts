@@ -23,7 +23,7 @@ export class AuthService {
       }
       return {
         email: user.email,
-        password: user.name,
+        name: user.name,
         position: user.position,
       };
     }
