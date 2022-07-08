@@ -14,6 +14,7 @@ import { AuthModule } from './auth/auth.module';
 import { StorageModule } from './storage/storage.module';
 import { DetectorModule } from './detector/detector.module';
 import { DataModule } from './data/data.module';
+import { StreamModule } from './stream/stream.module';
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { DataModule } from './data/data.module';
     StorageModule,
     DetectorModule,
     DataModule,
+    StreamModule,
   ],
   controllers: [AppController],
   providers: [AppService],

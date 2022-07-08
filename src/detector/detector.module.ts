@@ -1,4 +1,7 @@
 import { Module } from '@nestjs/common';
+import { DetectorService } from './detector.service';
 
-@Module({})
+@Module({
+  providers: [DetectorService]
+})
 export class DetectorModule {}
