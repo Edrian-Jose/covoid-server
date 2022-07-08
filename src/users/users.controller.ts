@@ -63,7 +63,6 @@ export class UsersController {
     }
 
     if (req.user.email !== user.email) {
-      console.log(req.user, userBody);
       throw new UnauthorizedException('You cannot change other users info');
     }
 

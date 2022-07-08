@@ -8,9 +8,7 @@ import { DeviceMeta, DevicesMeta } from './stream';
 import { Queue } from 'bull';
 import { InjectQueue } from '@nestjs/bull';
 import { SchedulerRegistry } from '@nestjs/schedule';
-import { WebSocketServer } from '@nestjs/websockets';
 import { Server } from 'socket.io';
-
 @Injectable()
 export class StreamService {
   constructor(
@@ -19,9 +17,9 @@ export class StreamService {
     private schedulerRegistry: SchedulerRegistry,
   ) {}
 
-  @WebSocketServer() server: Server;
-
+  public socket: Server;
   public users = new Map<string, ClientUser>();
+  public clientsDevice = new Map<string, string>();
   public devices = new Map<string, OnvifDevice>();
   public realTimeData = new Map<string, DeviceRTData>();
   public devicesMeta = new Map<string, DeviceMeta>();
@@ -34,6 +32,7 @@ export class StreamService {
       });
 
       let camera = await this.cameraModel.findOne({ urn: probe.urn }).exec();
+      const id = camera._id.toString();
       if (!camera) {
         camera = new this.cameraModel({
           urn: probe.urn,
@@ -48,18 +47,19 @@ export class StreamService {
         }
       }
       await odevice.init();
-      this.devices.set(camera._id, odevice);
+      this.devices.set(id, odevice);
       const lastFrame =
         (await odevice.fetchSnapshot()).body.toString('base64') || 'none';
 
-      if (!this.devicesMeta.has(camera._id)) {
+      if (!this.devicesMeta.has(id)) {
         const meta = {
           ...camera.toObject(),
+          id,
           address: odevice.address,
           init: true,
           lastFrame,
         };
-        this.devicesMeta.set(camera._id, meta);
+        this.devicesMeta.set(id, meta);
       }
     }
     return this.devicesMeta;
@@ -77,14 +77,23 @@ export class StreamService {
         violators: [],
       };
       // Broadcast stream every 33ms(30fps) to the clients
-      const interval = setInterval(this.broadcastStream, 33);
+
+      const interval = setInterval(
+        () => this.broadcastStream(id, this.devices, this.socket),
+        33,
+      );
       this.schedulerRegistry.addInterval(`stream:${id}`, interval);
     } else {
       // If client is not on the list of connected clients
       if (!data.connected.includes(clientId)) {
         data.connected.push(clientId);
+        if (this.clientsDevice.has(clientId)) {
+          const oldDeviceId = this.clientsDevice.get(clientId);
+          await this.disconnect(oldDeviceId, clientId);
+        }
       }
     }
+    this.clientsDevice.set(clientId, id);
     this.realTimeData.set(id, data);
     return this.realTimeData.get(id);
   }
@@ -100,9 +109,17 @@ export class StreamService {
       }
     }
     if (!data.connected.length) {
-      this.schedulerRegistry.deleteInterval(`stream:${id}`);
+      if (this.realTimeData.has(id)) {
+        this.realTimeData.delete(id);
+      }
+
+      if (this.schedulerRegistry.getInterval(`stream:${id}`)) {
+        this.schedulerRegistry.deleteInterval(`stream:${id}`);
+      }
+    } else {
+      this.realTimeData.set(id, data);
     }
-    this.realTimeData.set(id, data);
+    this.clientsDevice.delete(clientId);
     return data;
   }
 
@@ -113,10 +130,19 @@ export class StreamService {
     return snapshot.body.toString('base64');
   }
 
-  async broadcastStream(id: string) {
-    const frame = await this.fetch(id);
+  async broadcastStream(
+    id: string,
+    devices: Map<string, OnvifDevice>,
+    server: Server,
+  ) {
+    if (!devices.has(id)) return null;
+    const device = devices.get(id);
+    const snapshot = await device.fetchSnapshot();
+    const frame = snapshot.body.toString('base64');
+    const hrTime = process.hrtime();
+    console.log(hrTime[0] * 1000000 + hrTime[1] / 1000);
     if (frame) {
-      this.server.to(id).emit('streamFrame', frame);
+      server.to(id).emit('stream:frame', frame);
     }
   }
 }
