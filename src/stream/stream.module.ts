@@ -9,7 +9,7 @@ import { BullModule } from '@nestjs/bull';
   imports: [
     MongooseModule.forFeature([{ name: Camera.name, schema: CameraSchema }]),
     BullModule.registerQueue({
-      name: 'image',
+      name: 'stream',
     }),
   ],
   providers: [StreamService, StreamGateway],

@@ -1,29 +1,45 @@
 import {
   ConnectedSocket,
-  OnGatewayConnection,
-  OnGatewayDisconnect,
+  MessageBody,
   OnGatewayInit,
+  SubscribeMessage,
   WebSocketGateway,
+  WsException,
 } from '@nestjs/websockets';
 import { Socket } from 'socket.io';
+import { ConnectCameraDto } from './dto/connect-camera.dto';
 import { StreamService } from './stream.service';
 
 @WebSocketGateway()
-export class StreamGateway
-  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
-{
+export class StreamGateway implements OnGatewayInit {
   constructor(private streamService: StreamService) {}
   async afterInit() {
-    const metas = await this.streamService.discover();
+    await this.streamService.discover();
     //Load models in the detector gateway
   }
 
-  handleConnection(@ConnectedSocket() client: Socket) {
-    console.log(client.id + ' is connected');
+  @SubscribeMessage('stream:connect')
+  async handleStreamConnect(
+    @MessageBody() data: ConnectCameraDto,
+    @ConnectedSocket() client: Socket,
+  ) {
+    if (!this.streamService.devicesMeta.has(data.id)) {
+      throw new WsException("Camera doesn't exist");
+    }
+
+    const rtData = await this.streamService.connect(data.id, client.id);
+    client.join(rtData.id);
   }
 
-  handleDisconnect(@ConnectedSocket() client: Socket) {
-    // this.cameraService.disconnectAll(client.id);
-    console.log(client.id + ' disconnected');
+  @SubscribeMessage('stream:disconnect')
+  async handleStreamDisconnect(
+    @MessageBody() data: ConnectCameraDto,
+    @ConnectedSocket() client: Socket,
+  ) {
+    if (!this.streamService.devicesMeta.has(data.id)) {
+      throw new WsException("Camera doesn't exist");
+    }
+
+    await this.streamService.disconnect(data.id, client.id);
   }
 }

@@ -27,8 +27,12 @@ export interface Violator {
 
 export interface DeviceMeta extends Camera {
   address: string;
-  connected: string[];
   init: boolean;
   lastFrame: string;
+}
+
+export interface DeviceRTData {
+  id: string;
+  connected: string[];
   violators: Violator[];
 }
