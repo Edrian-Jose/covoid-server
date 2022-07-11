@@ -1,5 +1,5 @@
 import { ConfigService } from '@nestjs/config';
-import { Logger, LoggerService, UseGuards } from '@nestjs/common';
+import { Logger, UseGuards } from '@nestjs/common';
 import {
   ConnectedSocket,
   MessageBody,
@@ -87,7 +87,7 @@ export class StreamGateway
   @UseGuards(WsGuard)
   @SubscribeMessage('stream:refresh')
   async handleStreamRefresh() {
-    await this.streamService.discover();
+    await this.streamService.refresh();
     this.logger.log(
       `${this.streamService.devices.size} DEVICES(S) ARE CONNNECTED`,
     );

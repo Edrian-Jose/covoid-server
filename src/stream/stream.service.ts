@@ -27,6 +27,10 @@ export class StreamService {
   async discover(): Promise<DevicesMeta> {
     const probes: Probe[] = await startProbe();
     for (const probe of probes) {
+      const odevice = new OnvifDevice({
+        xaddr: probe.xaddrs[0],
+      });
+
       let camera = await this.cameraModel.findOne({ urn: probe.urn }).exec();
       const id = camera._id.toString();
       if (!camera) {
@@ -36,20 +40,18 @@ export class StreamService {
         });
         camera = await camera.save();
       }
-      if (this.devices.has(id)) {
-        continue;
-      }
-
-      const odevice = new OnvifDevice({
-        xaddr: probe.xaddrs[0],
-      });
-
       if (camera.needAuth) {
         const { login, password } = camera;
         if (login && password) {
           odevice.setAuth(login, password);
         }
       }
+      if (this.devices.has(id)) {
+        continue;
+      }
+
+      await odevice.init();
+      this.devices.set(id, odevice);
 
       const lastFrame =
         (await odevice.fetchSnapshot()).body.toString('base64') || 'none';
@@ -68,6 +70,38 @@ export class StreamService {
     return this.devicesMeta;
   }
 
+  async refresh() {
+    for (const [id, device] of this.devices) {
+      try {
+        await device.fetchSnapshot();
+      } catch (error) {
+        this.remove(id);
+      }
+    }
+
+    await this.discover();
+  }
+
+  async check(id: string) {
+    try {
+      const device = this.devices.get(id);
+      return await device.fetchSnapshot();
+    } catch (error) {
+      return false;
+    }
+  }
+
+  async remove(id: string) {
+    this.devices.delete(id);
+    this.realTimeData.delete(id);
+    this.devicesMeta.delete(id);
+    for (const [clientId, cameraId] of this.clientsDevice) {
+      if (cameraId == id) {
+        this.disconnect(cameraId, clientId);
+      }
+    }
+  }
+
   async connect(id: string, clientId: string): Promise<DeviceRTData | null> {
     // TODO: Add a guard decorator above
     if (!this.devicesMeta.has(id)) return null;
@@ -81,10 +115,22 @@ export class StreamService {
       };
       // Broadcast stream every 33ms(30fps) to the clients
 
-      const interval = setInterval(
-        () => this.broadcastStream(id, this.devices, this.socket),
-        33,
-      );
+      const interval = setInterval(async () => {
+        const broadcasted = await this.broadcastStream(
+          id,
+          this.devices,
+          this.socket,
+        );
+        if (!broadcasted) {
+          if (this.devices.has(id)) {
+            this.remove(id);
+          }
+          if (this.schedulerRegistry.doesExist('interval', `stream:${id}`)) {
+            this.schedulerRegistry.deleteInterval(`stream:${id}`);
+          }
+          clearInterval(interval);
+        }
+      }, 33);
       this.schedulerRegistry.addInterval(`stream:${id}`, interval);
     } else {
       // If client is not on the list of connected clients
@@ -116,7 +162,7 @@ export class StreamService {
         this.realTimeData.delete(id);
       }
 
-      if (this.schedulerRegistry.getInterval(`stream:${id}`)) {
+      if (this.schedulerRegistry.doesExist('interval', `stream:${id}`)) {
         this.schedulerRegistry.deleteInterval(`stream:${id}`);
       }
     } else {
@@ -140,10 +186,15 @@ export class StreamService {
   ) {
     if (!devices.has(id)) return null;
     const device = devices.get(id);
-    const snapshot = await device.fetchSnapshot();
-    const frame = snapshot.body.toString('base64');
-    if (frame) {
-      server.to(id).emit('stream:frame', frame);
+    try {
+      const snapshot = await device.fetchSnapshot();
+      const frame = snapshot.body.toString('base64');
+      if (frame) {
+        server.to(id).emit('stream:frame', frame);
+      }
+      return true;
+    } catch (error) {
+      return false;
     }
   }
 }
