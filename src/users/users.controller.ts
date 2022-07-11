@@ -29,6 +29,10 @@ export class UsersController {
     if (req.user.position !== 'admin') {
       throw new UnauthorizedException('Not admin');
     }
+    const existingUser = await this.userService.findByEmail(body.email);
+    if (existingUser) {
+      throw new BadRequestException('Email already added');
+    }
     const { email, position } = await this.userService.create(body);
     return await this.authService.login({ email, position });
   }
