@@ -1,5 +1,5 @@
 import { ConfigService } from '@nestjs/config';
-import { UseGuards } from '@nestjs/common';
+import { Logger, LoggerService, UseGuards } from '@nestjs/common';
 import {
   ConnectedSocket,
   MessageBody,
@@ -29,10 +29,14 @@ export class StreamGateway
     private configService: ConfigService,
   ) {}
   @WebSocketServer() public server: Server;
+  private readonly logger = new Logger(StreamGateway.name);
 
   async afterInit() {
     await this.streamService.discover();
     this.streamService.socket = this.server;
+    this.logger.log(
+      `${this.streamService.devices.size} DEVICES(S) ARE CONNNECTED`,
+    );
     //Load models in the detector gateway
   }
 
@@ -78,6 +82,15 @@ export class StreamGateway
     client.join(rtData.id);
 
     return rtData;
+  }
+
+  @UseGuards(WsGuard)
+  @SubscribeMessage('stream:refresh')
+  async handleStreamRefresh() {
+    await this.streamService.discover();
+    this.logger.log(
+      `${this.streamService.devices.size} DEVICES(S) ARE CONNNECTED`,
+    );
   }
 
   @UseGuards(WsGuard)

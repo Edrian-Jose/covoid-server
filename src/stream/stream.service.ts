@@ -27,10 +27,6 @@ export class StreamService {
   async discover(): Promise<DevicesMeta> {
     const probes: Probe[] = await startProbe();
     for (const probe of probes) {
-      const odevice = new OnvifDevice({
-        xaddr: probe.xaddrs[0],
-      });
-
       let camera = await this.cameraModel.findOne({ urn: probe.urn }).exec();
       const id = camera._id.toString();
       if (!camera) {
@@ -40,14 +36,21 @@ export class StreamService {
         });
         camera = await camera.save();
       }
+      if (this.devices.has(id)) {
+        continue;
+      }
+
+      const odevice = new OnvifDevice({
+        xaddr: probe.xaddrs[0],
+      });
+
       if (camera.needAuth) {
         const { login, password } = camera;
         if (login && password) {
           odevice.setAuth(login, password);
         }
       }
-      await odevice.init();
-      this.devices.set(id, odevice);
+
       const lastFrame =
         (await odevice.fetchSnapshot()).body.toString('base64') || 'none';
 
