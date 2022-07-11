@@ -139,8 +139,6 @@ export class StreamService {
     const device = devices.get(id);
     const snapshot = await device.fetchSnapshot();
     const frame = snapshot.body.toString('base64');
-    const hrTime = process.hrtime();
-    console.log(hrTime[0] * 1000000 + hrTime[1] / 1000);
     if (frame) {
       server.to(id).emit('stream:frame', frame);
     }

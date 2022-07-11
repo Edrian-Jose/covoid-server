@@ -1,5 +1,5 @@
 ### Add user account
-POST http://localhost:3000/users/add/
+POST http://localhost:4000/users/add/
 Content-Type: application/json
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImVkcmlhbmpvc2VmZXJyZXJAZ21haWwuY29tIiwicG9zaXRpb24iOiJhZG1pbiIsImlhdCI6MTY1NjE0NjE0NiwiZXhwIjoxNjU2MTQ2MjA2fQ.Hyi0uwbZnCr8lFux5pTofhlOo8-phQBmSq6rTZ4iF0E
 
@@ -9,7 +9,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImVkcmlhb
 }
 
 ### Create user account
-POST http://localhost:3000/users/create/
+POST http://localhost:4000/users/create/
 Content-Type: application/json
 
 {
@@ -19,7 +19,7 @@ Content-Type: application/json
 }
 
 ### Update user account
-POST http://localhost:3000/users/update/
+POST http://localhost:4000/users/update/
 Content-Type: application/json
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImVkcmlhbmpvc2VmZXJyZXJAZ21haWwuY29tIiwicG9zaXRpb24iOiJhZG1pbiIsImlhdCI6MTY1NjE0NjE0NiwiZXhwIjoxNjU2MTQ2MjA2fQ.Hyi0uwbZnCr8lFux5pTofhlOo8-phQBmSq6rTZ4iF0E
 

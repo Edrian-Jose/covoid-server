@@ -16,7 +16,6 @@ export interface ClientDevices {
 
 export interface ClientUser extends User {
   clientId: string;
-  connections: string[];
 }
 
 export interface Violator {
