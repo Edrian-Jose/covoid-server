@@ -129,6 +129,10 @@ export class StreamService {
             this.schedulerRegistry.deleteInterval(`stream:${id}`);
           }
           clearInterval(interval);
+          this.socket.to(id).emit('stream:notif', {
+            message: 'Camera has been disconnected to the server.',
+            type: 'error',
+          });
         }
       }, 33);
       this.schedulerRegistry.addInterval(`stream:${id}`, interval);
