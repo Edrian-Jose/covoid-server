@@ -103,7 +103,6 @@ export class StreamService {
   }
 
   async connect(id: string, clientId: string): Promise<DeviceRTData | null> {
-    // TODO: Add a guard decorator above
     if (!this.devicesMeta.has(id)) return null;
     let data = this.realTimeData.has(id) ? this.realTimeData.get(id) : null;
 

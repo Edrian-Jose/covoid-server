@@ -1,7 +1,18 @@
 import { Module } from '@nestjs/common';
 import { DetectorService } from './detector.service';
+import { DetectorGateway } from './detector.gateway';
+import { BullModule } from '@nestjs/bull';
+import { join } from 'path';
+import { StreamModule } from 'src/stream/stream.module';
 
 @Module({
-  providers: [DetectorService]
+  imports: [
+    BullModule.registerQueue({
+      name: 'sdd',
+      processors: [join(__dirname, 'sdd.processor.js')],
+    }),
+    StreamModule,
+  ],
+  providers: [DetectorService, DetectorGateway],
 })
 export class DetectorModule {}

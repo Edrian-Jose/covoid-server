@@ -28,12 +28,12 @@ export class StreamGateway
     private jwtService: JwtService,
     private configService: ConfigService,
   ) {}
-  @WebSocketServer() public server: Server;
+
   private readonly logger = new Logger(StreamGateway.name);
 
-  async afterInit() {
+  async afterInit(server: Server) {
     await this.streamService.discover();
-    this.streamService.socket = this.server;
+    this.streamService.socket = server;
     this.logger.log(
       `${this.streamService.devices.size} DEVICES(S) ARE CONNNECTED`,
     );

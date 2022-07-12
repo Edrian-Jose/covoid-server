@@ -18,5 +18,6 @@ import { UsersModule } from 'src/users/users.module';
     ConfigModule,
   ],
   providers: [StreamService, StreamGateway, JwtService],
+  exports: [StreamService],
 })
 export class StreamModule {}
