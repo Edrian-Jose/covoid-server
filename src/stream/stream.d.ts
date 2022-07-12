@@ -20,6 +20,8 @@ export interface ClientUser extends User {
 }
 
 export type Violation = 'NoMask' | 'NoSD';
+export type EntityType = 'Person' | 'Face';
+
 export interface Violator {
   id: string;
   type: Violation;

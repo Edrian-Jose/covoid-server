@@ -8,11 +8,11 @@ export class DataService {}
  * cameraId,
  * type
  * entities
- * violators
+ * violators: [Violator]
  * meanDistance
  *
  * Violator
- * _id
+ * entityid
  * type
  * score
  * contact
