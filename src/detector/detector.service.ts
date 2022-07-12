@@ -62,7 +62,6 @@ export class DetectorService {
       const isCompleted = await job.isCompleted();
       if (isCompleted) {
         this.jobs.sdd.shift();
-        this.logger.log(job.returnvalue);
       }
     }
     const newJob = await this.sddQueue.add({

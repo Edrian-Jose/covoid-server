@@ -123,4 +123,5 @@ export default async function (job: Job, cb: DoneCallback) {
     console.group(error);
     cb(error, null);
   }
+  // STARTUP: 3s, DETECT: 200-250ms
 }
