@@ -1,30 +1,16 @@
+import { Violator } from './../stream/stream.d';
 import { Job, DoneCallback } from 'bull';
 import * as tf from '@tensorflow/tfjs-node';
 import * as CocoSsd from '@tensorflow-models/coco-ssd';
 import * as cv from 'opencv4nodejs';
+import { DetectedPerson } from './detector';
 
 let model: CocoSsd.ObjectDetection;
+const capturers = new Map<string, cv.VideoCapture>();
 
-export interface DetectedPersons {
-  [name: string]: {
-    id: string;
-    bbox: number[];
-    contact: string[];
-  };
-}
-interface Violator {
-  id: string;
-  img: string;
-  type: 'No Mask' | 'No Social Distance';
-  contact?: string[];
-}
-
-interface Violators {
-  [name: string]: Violator;
-}
 export default async function (job: Job, cb: DoneCallback) {
-  const detectedPersons: DetectedPersons = {};
-  const violators: Violators = {};
+  const detectedPersons = new Map<string, DetectedPerson>();
+  const violators = new Map<string, Violator>();
   try {
     if (!model) {
       tf.getBackend();
@@ -35,7 +21,21 @@ export default async function (job: Job, cb: DoneCallback) {
   }
 
   try {
-    const buffer = Buffer.from(job.data.img, 'base64');
+    let buffer: Buffer;
+
+    if (job.data.img) {
+      buffer = Buffer.from(job.data.img, 'base64');
+    } else if (job.data.url) {
+      if (!capturers.has(job.data.url)) {
+        capturers.set(job.data.url, new cv.VideoCapture(job.data.url));
+      }
+      const vcap = capturers.get(job.data.url);
+      const frame = vcap.read();
+      buffer = cv.imencode('.jpg', frame);
+    } else {
+      cb(new Error('No image or stream url provided'), null);
+    }
+
     const imgTensor = tf.tidy(() => tf.node.decodeImage(buffer, 3));
     const detections = await model.detect(imgTensor as tf.Tensor3D);
     imgTensor.dispose();
@@ -54,19 +54,19 @@ export default async function (job: Job, cb: DoneCallback) {
       }
     });
     const img = cv.imdecode(buffer);
-    const ids = Object.keys(detectedPersons);
+    const ids = Array.from(detectedPersons.keys());
     if (job.data.calibration) {
       const { focalLength, shoulderLength, threshold } = job.data.calibration;
       for (let i = 0; i < ids.length; i++) {
         const iKey = ids[i];
-        const iPerson = detectedPersons[iKey];
+        const iPerson = detectedPersons.get(iKey);
         const [iPX, iPY, iPW, iPH] = iPerson.bbox;
         const iY = (focalLength * shoulderLength) / iPW;
         const iX = iPX + iPW / 2;
 
         for (let j = i + 1; j < ids.length; j++) {
           const jKey = ids[j];
-          const jPerson = detectedPersons[jKey];
+          const jPerson = detectedPersons.get(jKey);
           const [jPX, jPY, jPW, jPH] = jPerson.bbox;
           const jX = jPX + jPW / 2;
           const jY = (focalLength * shoulderLength) / jPW;
@@ -78,39 +78,41 @@ export default async function (job: Job, cb: DoneCallback) {
           const ijD = Math.sqrt(Math.pow(ijXm, 2) + Math.pow(ijY, 2));
           if (ijD < threshold) {
             if (!jPerson.contact.includes(iKey)) {
-              detectedPersons[jKey].contact.push(iKey);
-              if (!violators[jKey]) {
-                violators[jKey] = {
+              detectedPersons.get(jKey).contact.push(iKey);
+              if (!violators.has(jKey)) {
+                violators.set(jKey, {
                   id: jKey,
-                  img: cv
+                  image: cv
                     .imencode(
                       '.jpg',
                       img.getRegion(new cv.Rect(jPX, jPY, jPW, jPH)),
                     )
                     .toString('base64'),
-                  type: 'No Social Distance',
+                  type: 'NoSD',
                   contact: [iKey],
-                };
+                  score: (threshold - ijD) / threshold,
+                });
               } else {
-                violators[jKey].contact.push(iKey);
+                violators.get(jKey).contact.push(iKey);
               }
             }
             if (!iPerson.contact.includes(jKey)) {
-              detectedPersons[iKey].contact.push(jKey);
-              if (!violators[iKey]) {
-                violators[iKey] = {
+              detectedPersons.get(iKey).contact.push(jKey);
+              if (!violators.get(iKey)) {
+                violators.set(iKey, {
                   id: iKey,
-                  img: cv
+                  image: cv
                     .imencode(
                       '.jpg',
                       img.getRegion(new cv.Rect(iPX, iPY, iPW, iPH)),
                     )
                     .toString('base64'),
-                  type: 'No Social Distance',
+                  type: 'NoSD',
                   contact: [jKey],
-                };
+                  score: (threshold - ijD) / threshold,
+                });
               } else {
-                violators[iKey].contact.push(jKey);
+                violators.get(iKey).contact.push(jKey);
               }
             }
           }

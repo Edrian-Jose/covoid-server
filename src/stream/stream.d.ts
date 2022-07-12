@@ -1,4 +1,5 @@
 import { User } from 'src/users/users.schema';
+import { Camera } from './camera.schema';
 
 export type Devices = Map<string, OnvifDevice>;
 
@@ -19,9 +20,11 @@ export interface ClientUser extends User {
 }
 
 export interface Violator {
+  id: string;
   type: 'NoMask' | 'NoSD';
-  image: string[];
+  image: string;
   score: number;
+  contact?: string[];
 }
 
 export interface DeviceMeta extends Camera {

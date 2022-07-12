@@ -5,6 +5,7 @@ import { DetectorService } from './detector.service';
 export class DetectorGateway implements OnGatewayInit {
   constructor(private detectorService: DetectorService) {}
   async afterInit() {
-    this.detectorService.loadModels();
+    //
+    console.log(this.detectorService.jobs.fmd.length);
   }
 }

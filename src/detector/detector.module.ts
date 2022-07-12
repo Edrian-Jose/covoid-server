@@ -11,6 +11,10 @@ import { StreamModule } from 'src/stream/stream.module';
       name: 'sdd',
       processors: [join(__dirname, 'sdd.processor.js')],
     }),
+    BullModule.registerQueue({
+      name: 'fmd',
+      processors: [join(__dirname, 'fmd.processor.js')],
+    }),
     StreamModule,
   ],
   providers: [DetectorService, DetectorGateway],

@@ -59,6 +59,7 @@ export class StreamService {
       if (!this.devicesMeta.has(id)) {
         const meta = {
           ...camera.toObject(),
+          _id: camera._id.toString(),
           id,
           address: odevice.address,
           init: true,
@@ -178,8 +179,25 @@ export class StreamService {
   async fetch(id: string): Promise<string | null> {
     if (!this.devices.has(id)) return null;
     const device = this.devices.get(id);
-    const snapshot = await device.fetchSnapshot();
-    return snapshot.body.toString('base64');
+    try {
+      const snapshot = await device.fetchSnapshot();
+      return snapshot.body.toString('base64');
+    } catch (error) {
+      this.remove(id);
+    }
+    return null;
+  }
+
+  async getUrl(id: string): Promise<string | null> {
+    if (!this.devices.has(id)) return null;
+    const device = this.devices.get(id);
+    try {
+      await device.fetchSnapshot();
+      return device.getUdpStreamUrl();
+    } catch (error) {
+      this.remove(id);
+    }
+    return null;
   }
 
   async broadcastStream(
