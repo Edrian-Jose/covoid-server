@@ -31,6 +31,7 @@ export interface DeviceMeta extends Camera {
   address: string;
   init: boolean;
   lastFrame: string;
+  url: string;
 }
 
 export interface DeviceRTData {

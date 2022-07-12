@@ -46,11 +46,11 @@ export default async function (job: Job, cb: DoneCallback) {
     detections.forEach((detection, i) => {
       if (detection.class === 'person' && detection.score > 0.5) {
         const id = i.toString();
-        detectedPersons[id] = {
+        detectedPersons.set(id, {
           id,
           bbox: detection.bbox,
           contact: [],
-        };
+        });
       }
     });
     const img = cv.imdecode(buffer);
@@ -120,9 +120,12 @@ export default async function (job: Job, cb: DoneCallback) {
       }
     }
 
-    cb(null, { persons: detectedPersons, violators });
+    cb(null, {
+      persons: Object.fromEntries(detectedPersons.entries()),
+      violators: Object.fromEntries(violators.entries()),
+    });
   } catch (error) {
-    console.group(error);
+    console.log(error);
     cb(error, null);
   }
   // STARTUP: 3s, DETECT: 200-250ms

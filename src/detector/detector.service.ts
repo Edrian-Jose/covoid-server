@@ -27,7 +27,7 @@ export class DetectorService {
     private streamService: StreamService,
   ) {}
 
-  @Interval(1000)
+  // @Interval(1000)
   async detectSdd() {
     if (this.detectionState == 'UNKNOWN') {
       return;
@@ -64,7 +64,7 @@ export class DetectorService {
     }
   }
 
-  // @Interval(1000)
+  @Interval(1000)
   async detectFmd() {
     if (this.detectionState == 'UNKNOWN') {
       return;
@@ -81,23 +81,17 @@ export class DetectorService {
         this.jobs.fmd.shift();
         this.logger.log(job.returnvalue);
       }
-
-      for (const [id, meta] of this.streamService.devicesMeta) {
-        const frameImg = await this.streamService.fetch(id);
-        if (!frameImg) {
-          continue;
-        }
-        const newJob = await this.sddQueue.add({
-          time: new Date().getMilliseconds(),
-          img: frameImg,
-          calibration: {
-            focalLength: meta.focalLength,
-            shoulderLength: meta.shoulderLength,
-            threshold: meta.threshold,
-          },
-        });
-        this.jobs.sdd.push(newJob.id);
+    }
+    for (const [id] of this.streamService.devicesMeta) {
+      const data = await this.streamService.getUrl(id);
+      if (!data) {
+        continue;
       }
+      const newJob = await this.fmdQueue.add({
+        time: new Date().getMilliseconds(),
+        url: data,
+      });
+      this.jobs.fmd.push(newJob.id);
     }
   }
 }

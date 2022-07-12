@@ -1,5 +1,128 @@
 import { DoneCallback, Job } from 'bull';
+import { Violator } from 'src/stream/stream';
+import { DetectedFace } from './detector';
+import * as BlazeFace from '@tensorflow-models/blazeface';
+import * as cv from 'opencv4nodejs';
+import * as tf from '@tensorflow/tfjs-node';
 
-export default function (job: Job, cb: DoneCallback) {
-  cb(null, job.id);
+let faceModel: BlazeFace.BlazeFaceModel;
+let maskedFaceModel: tf.LayersModel;
+const capturers = new Map<string, cv.VideoCapture>();
+
+export default async function (job: Job, cb: DoneCallback) {
+  const detectedFaces = new Map<string, DetectedFace>();
+  const violators = new Map<string, Violator>();
+
+  try {
+    if (!faceModel) {
+      tf.getBackend();
+      faceModel = await BlazeFace.load();
+    }
+    if (!maskedFaceModel) {
+      tf.getBackend();
+      maskedFaceModel = await tf.loadLayersModel(
+        `file://${__dirname}/models/mask/model.json`,
+      );
+    }
+  } catch (error) {
+    console.log(error);
+  }
+
+  try {
+    let buffer: Buffer;
+
+    if (job.data.img) {
+      buffer = Buffer.from(job.data.img, 'base64');
+    } else if (job.data.url) {
+      if (!capturers.has(job.data.url)) {
+        capturers.set(job.data.url, new cv.VideoCapture(job.data.url));
+      }
+      const vcap = capturers.get(job.data.url);
+      const frame = vcap.read();
+      buffer = cv.imencode('.jpg', frame);
+    } else {
+      cb(new Error('No image or stream url provided'), null);
+    }
+
+    const imgTensor = tf.tidy(() => tf.node.decodeImage(buffer, 3));
+    const detections = await faceModel.estimateFaces(imgTensor as tf.Tensor3D);
+    imgTensor.dispose();
+
+    if (!detections.length) {
+      cb(null, null);
+    }
+
+    const img = cv.imdecode(buffer);
+
+    detections.forEach((detection, i) => {
+      const id = i.toString();
+      const [topX, topY] = detection.topLeft as number[];
+      const [botX, botY] = detection.bottomRight as number[];
+      const pos1 = 0 <= topX && topX <= img.cols ? topX : 0;
+      const pos2 =
+        topY - topY * 0.3 >= 0 && topY - topY * 0.3 <= img.rows
+          ? topY - topY * 0.3
+          : topY >= 0 && topY <= img.rows
+          ? topY
+          : 0;
+      const pos3 =
+        0 <= botX && botX <= img.cols ? botX - pos1 : img.cols - pos1;
+      const pos4 =
+        botY - pos2 + (botY - pos2) * 0.3 + botY <= img.rows &&
+        0 <= botY - pos2 + (botY - pos2) * 0.3 + botY
+          ? botY - pos2 + (botY - pos2) * 0.3
+          : botY >= 0 && botY <= img.rows
+          ? botY - pos2
+          : img.rows;
+      const face = img.getRegion(new cv.Rect(pos1, pos2, pos3, pos4));
+
+      //--dispose;
+      const resizedFace = face.resize(224, 224);
+
+      const buff = cv.imencode('.jpg', resizedFace);
+
+      //--dispose
+      const result = tf.tidy(() => {
+        let tensor = tf.node.decodeImage(buff);
+
+        const offset = tf.scalar(127.5);
+
+        tensor = tensor.sub(offset).div(offset).expandDims();
+        return maskedFaceModel.predict(tensor);
+      }) as tf.Tensor;
+
+      const [mask, withoutMask] = result.dataSync();
+      const label = mask > withoutMask ? 'Mask' : 'No Mask';
+      detectedFaces.set(id, {
+        id,
+        label,
+        bbox: [
+          topX,
+          topY - topY * 0.3,
+          botX - topX,
+          botY - topY + (botY - topY) * 0.5,
+        ],
+      });
+      if (withoutMask >= mask && withoutMask > 0.7) {
+        const violatorImg = cv.imencode('.jpg', face).toString('base64');
+        violators.set(id, {
+          id,
+          image: violatorImg,
+          score: withoutMask,
+          type: 'NoMask',
+        });
+      }
+
+      face.release();
+      resizedFace.release();
+      result.dispose();
+      cb(null, {
+        faces: Object.fromEntries(detectedFaces.entries()),
+        violators: Object.fromEntries(violators.entries()),
+      });
+    });
+  } catch (error) {
+    console.log(error);
+    cb(error, null);
+  }
 }

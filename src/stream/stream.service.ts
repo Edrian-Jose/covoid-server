@@ -64,6 +64,7 @@ export class StreamService {
           address: odevice.address,
           init: true,
           lastFrame,
+          url: odevice.getUdpStreamUrl(),
         };
         this.devicesMeta.set(id, meta);
       }
@@ -189,6 +190,9 @@ export class StreamService {
   }
 
   async getUrl(id: string): Promise<string | null> {
+    if (this.devicesMeta.has(id)) {
+      return this.devicesMeta.get(id).url;
+    }
     if (!this.devices.has(id)) return null;
     const device = this.devices.get(id);
     try {

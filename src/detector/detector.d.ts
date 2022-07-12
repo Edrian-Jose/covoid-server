@@ -3,3 +3,8 @@ export interface DetectedPerson {
   bbox: number[];
   contact: string[];
 }
+export interface DetectedFace {
+  id: string;
+  label: 'Mask' | 'No Mask';
+  bbox: number[];
+}
