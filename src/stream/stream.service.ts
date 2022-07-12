@@ -1,4 +1,4 @@
-import { ClientUser, DeviceRTData } from './stream.d';
+import { ClientUser, DeviceRTData, Violation, Violator } from './stream.d';
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
@@ -112,7 +112,10 @@ export class StreamService {
       data = {
         id,
         connected: [clientId],
-        violators: [],
+        violators: {
+          fmd: [],
+          sdd: [],
+        },
       };
       // Broadcast stream every 33ms(30fps) to the clients
 
@@ -221,5 +224,22 @@ export class StreamService {
     } catch (error) {
       return false;
     }
+  }
+
+  async setViolators(id: string, type: Violation, violators: Violator[]) {
+    if (!this.realTimeData.has(id)) {
+      return;
+    }
+    const data = this.realTimeData.get(id);
+    const violatorProp = type == 'NoMask' ? 'fmd' : 'sdd';
+    const violatorsRepo = data.violators[violatorProp];
+
+    const oldCount = violatorsRepo.length;
+    const newCount = violators.length;
+    if (oldCount !== newCount) {
+      // TODO: Trigger notification, saving data, storing data
+    }
+    data.violators[violatorProp] = violators;
+    return this.realTimeData.get(id);
   }
 }

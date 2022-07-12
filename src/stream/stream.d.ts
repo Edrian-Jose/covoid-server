@@ -19,9 +19,10 @@ export interface ClientUser extends User {
   clientId: string;
 }
 
+export type Violation = 'NoMask' | 'NoSD';
 export interface Violator {
   id: string;
-  type: 'NoMask' | 'NoSD';
+  type: Violation;
   image: string;
   score: number;
   contact?: string[];
@@ -37,5 +38,8 @@ export interface DeviceMeta extends Camera {
 export interface DeviceRTData {
   id: string;
   connected: string[];
-  violators: Violator[];
+  violators: {
+    fmd: Violator[];
+    sdd: Violator[];
+  };
 }

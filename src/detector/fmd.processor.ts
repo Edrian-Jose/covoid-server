@@ -4,6 +4,7 @@ import { DetectedFace } from './detector';
 import * as BlazeFace from '@tensorflow-models/blazeface';
 import * as cv from 'opencv4nodejs';
 import * as tf from '@tensorflow/tfjs-node';
+import mongoose from 'mongoose';
 
 let faceModel: BlazeFace.BlazeFaceModel;
 let maskedFaceModel: tf.LayersModel;
@@ -55,8 +56,8 @@ export default async function (job: Job, cb: DoneCallback) {
 
     const img = cv.imdecode(buffer);
 
-    detections.forEach((detection, i) => {
-      const id = i.toString();
+    detections.forEach((detection) => {
+      const id = new mongoose.Types.ObjectId().toString();
       const [topX, topY] = detection.topLeft as number[];
       const [botX, botY] = detection.bottomRight as number[];
       const pos1 = 0 <= topX && topX <= img.cols ? topX : 0;
@@ -121,6 +122,7 @@ export default async function (job: Job, cb: DoneCallback) {
         faces: Object.fromEntries(detectedFaces.entries()),
         violators: Object.fromEntries(violators.entries()),
         time: job.data.time,
+        id: job.data.id,
       });
     });
   } catch (error) {

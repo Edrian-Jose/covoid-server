@@ -4,6 +4,7 @@ import * as tf from '@tensorflow/tfjs-node';
 import * as CocoSsd from '@tensorflow-models/coco-ssd';
 import * as cv from 'opencv4nodejs';
 import { DetectedPerson } from './detector';
+import mongoose from 'mongoose';
 
 let model: CocoSsd.ObjectDetection;
 const capturers = new Map<string, cv.VideoCapture>();
@@ -44,9 +45,9 @@ export default async function (job: Job, cb: DoneCallback) {
       cb(null, null);
     }
 
-    detections.forEach((detection, i) => {
+    detections.forEach((detection) => {
       if (detection.class === 'person' && detection.score > 0.5) {
-        const id = i.toString();
+        const id = new mongoose.Types.ObjectId().toString();
         detectedPersons.set(id, {
           id,
           bbox: detection.bbox,
@@ -124,6 +125,7 @@ export default async function (job: Job, cb: DoneCallback) {
     cb(null, {
       persons: Object.fromEntries(detectedPersons.entries()),
       violators: Object.fromEntries(violators.entries()),
+      id: job.data.id,
     });
   } catch (error) {
     console.log(error);

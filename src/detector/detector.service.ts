@@ -27,7 +27,7 @@ export class DetectorService {
     private streamService: StreamService,
   ) {}
 
-  // @Interval(1000)
+  @Interval(1000)
   async detectSdd() {
     if (this.detectionState == 'UNKNOWN') {
       return;
@@ -41,7 +41,12 @@ export class DetectorService {
       const isCompleted = await job.isCompleted();
       if (isCompleted) {
         this.jobs.sdd.shift();
-        this.logger.log(job.returnvalue);
+        const value = job.returnvalue;
+        this.streamService.setViolators(
+          value.id,
+          'NoSD',
+          Object.values(value.violators),
+        );
       }
     }
 
@@ -51,6 +56,7 @@ export class DetectorService {
         continue;
       }
       const newJob = await this.sddQueue.add({
+        id,
         time: new Date().getMilliseconds(),
         url: data,
         calibration: {
@@ -64,7 +70,7 @@ export class DetectorService {
     }
   }
 
-  @Interval(1000)
+  // @Interval(1000)
   async detectFmd() {
     if (this.detectionState == 'UNKNOWN') {
       return;
@@ -79,7 +85,12 @@ export class DetectorService {
       const isCompleted = await job.isCompleted();
       if (isCompleted) {
         this.jobs.fmd.shift();
-        this.logger.log(job.returnvalue);
+        const value = job.returnvalue;
+        this.streamService.setViolators(
+          value.id,
+          'NoMask',
+          Object.values(value.violators),
+        );
       }
     }
     for (const [id] of this.streamService.devicesMeta) {
@@ -90,6 +101,7 @@ export class DetectorService {
       const newJob = await this.fmdQueue.add({
         time: new Date().toLocaleTimeString(),
         url: data,
+        id,
       });
       this.jobs.fmd.push(newJob.id);
     }
