@@ -88,7 +88,7 @@ export class DetectorService {
         continue;
       }
       const newJob = await this.fmdQueue.add({
-        time: new Date().getMilliseconds(),
+        time: new Date().toLocaleTimeString(),
         url: data,
       });
       this.jobs.fmd.push(newJob.id);

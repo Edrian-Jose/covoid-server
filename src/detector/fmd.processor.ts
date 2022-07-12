@@ -38,6 +38,7 @@ export default async function (job: Job, cb: DoneCallback) {
         capturers.set(job.data.url, new cv.VideoCapture(job.data.url));
       }
       const vcap = capturers.get(job.data.url);
+      vcap.reset();
       const frame = vcap.read();
       buffer = cv.imencode('.jpg', frame);
     } else {
@@ -119,6 +120,7 @@ export default async function (job: Job, cb: DoneCallback) {
       cb(null, {
         faces: Object.fromEntries(detectedFaces.entries()),
         violators: Object.fromEntries(violators.entries()),
+        time: job.data.time,
       });
     });
   } catch (error) {
