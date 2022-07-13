@@ -24,7 +24,7 @@ export class DataService {
   private countData = new Map<string, CountData>();
   private meanCountData = new Map<string, CountData>();
 
-  @Cron('*/2 * * * *')
+  @Cron('*/10 * * * *')
   async saveCountData() {
     for (const [id, count] of this.meanCountData) {
       const _count = new this.countModel(count);
