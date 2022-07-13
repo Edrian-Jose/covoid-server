@@ -159,13 +159,12 @@ export class DataService {
         if (Object.prototype.hasOwnProperty.call(meanCount.factors, factor)) {
           const x: FactorData = meanCount.factors[factor];
           const y: FactorData = count.factors[factor];
-          console.log(x, y);
+
           for (let i = 0; i < x.length; i++) {
             const ix = x[i];
             const iy = y[i];
             const mean = (ix + iy) / 2;
             meanCount.factors[factor][i] = mean;
-            console.log(`${factor}[${i}]=${mean}`);
           }
         }
       }
