@@ -4,6 +4,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { DataService } from './data.service';
 import { Report, ReportSchema } from './report.schema';
 import { Violator, ViolatorSchema } from './violator.schema';
+import { Count, CountSchema } from './count.schema';
 
 @Module({
   imports: [
@@ -11,6 +12,7 @@ import { Violator, ViolatorSchema } from './violator.schema';
       { name: Violator.name, schema: ViolatorSchema },
     ]),
     MongooseModule.forFeature([{ name: Report.name, schema: ReportSchema }]),
+    MongooseModule.forFeature([{ name: Count.name, schema: CountSchema }]),
     StorageModule,
   ],
   providers: [DataService],

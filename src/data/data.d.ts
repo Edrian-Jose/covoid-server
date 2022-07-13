@@ -1,7 +1,7 @@
 import { FactorData } from './data.d';
 export type FactorData = [number, number, number];
 
-export interface AnalyticsData {
+export interface CountData {
   cameraId: string;
   name: string;
   score: number;

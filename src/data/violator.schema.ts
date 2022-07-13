@@ -4,7 +4,7 @@ import { Violation } from 'src/stream/stream';
 
 export type ViolatorDocument = Violator & Document;
 
-@Schema()
+@Schema({ timestamps: true })
 export class Violator {
   _id?: string;
 

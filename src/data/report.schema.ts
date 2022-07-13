@@ -6,7 +6,7 @@ import { Violator } from './violator.schema';
 
 export type ReportDocument = Report & Document;
 
-@Schema()
+@Schema({ timestamps: true })
 export class Report {
   _id?: string;
 
@@ -24,9 +24,6 @@ export class Report {
 
   @Prop()
   meanDistance?: number;
-
-  @Prop({ required: true })
-  reportedAt: number;
 }
 
 export const ReportSchema = SchemaFactory.createForClass(Report);

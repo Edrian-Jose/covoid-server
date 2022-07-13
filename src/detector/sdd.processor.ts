@@ -18,7 +18,6 @@ export default async function (job: Job, cb: DoneCallback) {
     id: job.data.id,
     meanDistance: 0,
   };
-  console.log(`SDD [${process.pid}]`);
   try {
     if (!model) {
       tf.getBackend();

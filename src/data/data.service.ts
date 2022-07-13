@@ -7,28 +7,40 @@ import { Violator, ViolatorDocument } from './violator.schema';
 import { DetectionData } from 'src/detector/detector';
 import { createEmptyDetectionData } from 'src/detector/detector.provider';
 import { StorageService } from 'src/storage/storage.service';
-import { AnalyticsData } from './data';
-import * as moment from 'moment';
+import { CountData, FactorData } from './data';
+import { Count, CountDocument } from './count.schema';
+import { Cron } from '@nestjs/schedule';
 
 @Injectable()
 export class DataService {
   constructor(
     @InjectModel(Violator.name) private violatorModel: Model<ViolatorDocument>,
     @InjectModel(Report.name) private reportModel: Model<ReportDocument>,
+    @InjectModel(Count.name) private countModel: Model<CountDocument>,
     private storageService: StorageService,
   ) {}
 
   private violatorsData = new Map<string, DetectionData<ViolatorEntity>>();
-  private analyticsData = new Map<string, AnalyticsData>();
+  private countData = new Map<string, CountData>();
+  private meanCountData = new Map<string, CountData>();
+
+  @Cron('*/2 * * * *')
+  async saveCountData() {
+    for (const [id, count] of this.meanCountData) {
+      const _count = new this.countModel(count);
+      await _count.save();
+      this.meanCountData.delete(id);
+    }
+  }
 
   async addMonitoringData(meta: DeviceMeta) {
     const id = meta._id;
     if (!this.violatorsData.has(id)) {
       this.violatorsData.set(id, createEmptyDetectionData<ViolatorEntity>());
     }
-    if (!this.analyticsData.has(id)) {
+    if (!this.countData.has(id)) {
       const threshold = meta.threshold || 1;
-      this.analyticsData.set(id, {
+      this.countData.set(id, {
         cameraId: meta._id,
         label: 'UNKNOWN',
         name: meta.name,
@@ -61,7 +73,7 @@ export class DataService {
     data[violatorProp] = violators;
 
     if (oldCount == newCount) return;
-    this.setAnalyticsData(id, type, violators, entities, meanDistance);
+    this.setCountData(id, type, violators, entities, meanDistance);
     const violatorsIds: string[] = [];
     const _violatorsIds: string[] = [];
     for (const violator of violators) {
@@ -81,7 +93,6 @@ export class DataService {
       entities,
       type,
       violators: violatorsIds,
-      reportedAt: moment().valueOf(),
     };
     if (meanDistance) {
       report.meanDistance = meanDistance;
@@ -93,16 +104,15 @@ export class DataService {
     this.storageService.storeReport(report, _violatorsIds);
   }
 
-  async setAnalyticsData(
+  async setCountData(
     id: string,
     type: Violation,
     violators: ViolatorEntity[],
     entities: string[],
     meanDistance?: number,
   ) {
-    if (!this.analyticsData.has(id)) return;
-
-    const data = this.analyticsData.get(id);
+    if (!this.countData.has(id)) return;
+    const data = this.countData.get(id);
     const prop = type == 'NoMask' ? 'fmv' : 'sdv';
     data.factors[prop] = [
       violators.length,
@@ -130,8 +140,41 @@ export class DataService {
         : data.score > 10
         ? 'LOW RISK'
         : 'SAFE';
-    this.analyticsData.set(id, data);
-    console.log(data);
+    this.countData.set(id, data);
+    this.setMeanCountData(id);
     return data;
+  }
+
+  async setMeanCountData(id: string) {
+    if (!this.countData.has(id)) return;
+
+    const count: CountData = JSON.parse(JSON.stringify(this.countData.get(id)));
+    if (!this.meanCountData.has(id)) {
+      this.meanCountData.set(id, count);
+    } else {
+      const meanCount: CountData = JSON.parse(
+        JSON.stringify(this.meanCountData.get(id)),
+      );
+      for (const factor in meanCount.factors) {
+        if (Object.prototype.hasOwnProperty.call(meanCount.factors, factor)) {
+          const x: FactorData = meanCount.factors[factor];
+          const y: FactorData = count.factors[factor];
+          console.log(x, y);
+          for (let i = 0; i < x.length; i++) {
+            const ix = x[i];
+            const iy = y[i];
+            const mean = (ix + iy) / 2;
+            meanCount.factors[factor][i] = mean;
+            console.log(`${factor}[${i}]=${mean}`);
+          }
+        }
+      }
+      meanCount.p2p[0] = (meanCount.p2p[0] + count.p2p[0]) / 2;
+      meanCount.p2p[2] = (meanCount.p2p[2] + count.p2p[2]) / 2;
+      meanCount.score = (meanCount.score + count.score) / 2;
+      this.meanCountData.set(id, meanCount);
+    }
+
+    return this.meanCountData.get(id);
   }
 }

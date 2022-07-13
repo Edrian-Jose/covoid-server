@@ -20,7 +20,6 @@ export default async function (job: Job, cb: DoneCallback) {
     id: job.data.id,
   };
 
-  console.log(`FMD [${process.pid}]`);
   try {
     if (!faceModel) {
       tf.getBackend();
