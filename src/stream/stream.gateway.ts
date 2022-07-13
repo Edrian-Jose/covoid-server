@@ -31,7 +31,12 @@ export class StreamGateway
   private readonly logger = new Logger(StreamGateway.name);
 
   async afterInit(server: Server) {
-    await this.streamService.discover();
+    try {
+      await this.streamService.discover();
+    } catch (error) {
+      this.logger.error('Initial discovery failed');
+    }
+
     this.streamService.socket = server;
     this.logger.log(
       `${this.streamService.devices.size} DEVICES(S) ARE CONNNECTED`,

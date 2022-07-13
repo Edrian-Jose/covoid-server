@@ -24,9 +24,16 @@ export class DetectorService {
   async cleanQueues() {
     await this.sddQueue.empty();
     await this.fmdQueue.empty();
+    await this.sddQueue.clean(120000, 'wait');
+    await this.sddQueue.clean(120000, 'wait');
+    await this.sddQueue.clean(1000, 'failed');
+    await this.fmdQueue.clean(1000, 'failed');
+    await this.sddQueue.clean(1000);
+    await this.fmdQueue.clean(1000);
   }
-  // @Interval(1000)
-  async detectSdd() {
+
+  @Interval(500)
+  async processSdd() {
     if (this.detectionState == 'UNKNOWN') {
       return;
     }
@@ -34,19 +41,42 @@ export class DetectorService {
       const jobId = this.jobs.sdd[0];
       const job = await this.sddQueue.getJob(jobId);
       if (!job) {
+        this.jobs.sdd.shift();
         return;
       }
       const isCompleted = await job.isCompleted();
       if (isCompleted) {
         this.jobs.sdd.shift();
-        this.dataService.setViolatorsData(
-          job.returnvalue.id,
-          'NoSD',
-          Object.values(job.returnvalue.violators),
-          Object.keys(job.returnvalue.persons),
-          job.returnvalue.meanDistance,
-        );
+        if (job.returnvalue) {
+          this.dataService.setViolatorsData(
+            job.returnvalue.id,
+            'NoSD',
+            Object.values(job.returnvalue.violators),
+            Object.keys(job.returnvalue.persons),
+            job.returnvalue.meanDistance,
+          );
+        }
+        job.remove();
       }
+      if (await job.isFailed()) {
+        this.jobs.sdd.shift();
+        job.remove();
+      }
+      this.sddQueue.clean(1000, 'completed');
+      const cleanedJobs = await this.sddQueue.clean(7000, 'wait');
+      for (const cleanedJob of cleanedJobs) {
+        const i = this.jobs.sdd.indexOf(cleanedJob.id);
+        if (i > -1) {
+          this.jobs.sdd.splice(i, 1);
+        }
+      }
+    }
+  }
+
+  @Interval(1000)
+  async detectSdd() {
+    if (this.detectionState == 'UNKNOWN') {
+      return;
     }
 
     for (const [id, meta] of this.streamService.devicesMeta) {
@@ -69,8 +99,8 @@ export class DetectorService {
     }
   }
 
-  @Interval(2000)
-  async detectFmd() {
+  @Interval(500)
+  async processFmd() {
     if (this.detectionState == 'UNKNOWN') {
       return;
     }
@@ -79,25 +109,44 @@ export class DetectorService {
       const jobId = this.jobs.fmd[0];
       const job = await this.fmdQueue.getJob(jobId);
       if (!job) {
+        this.jobs.fmd.shift();
         return;
       }
       const isCompleted = await job.isCompleted();
 
       if (isCompleted) {
         this.jobs.fmd.shift();
-        this.dataService.setViolatorsData(
-          job.returnvalue.id,
-          'NoMask',
-          Object.values(job.returnvalue.violators),
-          Object.keys(job.returnvalue.faces),
-        );
+        if (job.returnvalue) {
+          this.dataService.setViolatorsData(
+            job.returnvalue.id,
+            'NoMask',
+            Object.values(job.returnvalue.violators),
+            Object.keys(job.returnvalue.faces),
+          );
+        }
+
         job.remove();
       }
       if (await job.isFailed()) {
         this.jobs.fmd.shift();
         job.remove();
-        this.logger.error(job.failedReason);
       }
+
+      this.fmdQueue.clean(1000, 'completed');
+      const cleanedJobs = await this.fmdQueue.clean(7000, 'wait');
+      for (const cleanedJob of cleanedJobs) {
+        const i = this.jobs.fmd.indexOf(cleanedJob.id);
+        if (i > -1) {
+          this.jobs.fmd.splice(i, 1);
+        }
+      }
+    }
+  }
+
+  @Interval(1000)
+  async detectFmd() {
+    if (this.detectionState == 'UNKNOWN') {
+      return;
     }
     for (const [id] of this.streamService.devicesMeta) {
       const data = await this.streamService.getUrl(id);

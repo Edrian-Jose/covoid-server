@@ -1,5 +1,5 @@
 import { ClientUser } from './stream.d';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { OnvifDevice, Probe, startProbe } from 'node-onvif-ts';
@@ -7,7 +7,7 @@ import { Camera, CameraDocument } from './camera.schema';
 import { DeviceMeta, DevicesMeta } from './stream';
 import { Queue } from 'bull';
 import { InjectQueue } from '@nestjs/bull';
-import { SchedulerRegistry } from '@nestjs/schedule';
+import { Interval, SchedulerRegistry } from '@nestjs/schedule';
 import { Server } from 'socket.io';
 import { DataService } from 'src/data/data.service';
 @Injectable()
@@ -25,6 +25,13 @@ export class StreamService {
   public devices = new Map<string, OnvifDevice>();
   public deviceWathers = new Map<string, string[]>();
   public devicesMeta = new Map<string, DeviceMeta>();
+  private readonly logger = new Logger(StreamService.name);
+
+  @Interval(60000)
+  async rediscover() {
+    await this.discover();
+    this.logger.log(`${this.devices.size} DEVICES(S) ARE CONNNECTED`);
+  }
 
   async discover(): Promise<DevicesMeta> {
     const probes: Probe[] = await startProbe();
@@ -70,7 +77,7 @@ export class StreamService {
         this.devicesMeta.set(id, meta);
       }
 
-      this.dataService.addViolatorsData(id);
+      this.dataService.addMonitoringData(this.devicesMeta.get(id));
     }
     return this.devicesMeta;
   }

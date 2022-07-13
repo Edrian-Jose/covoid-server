@@ -24,6 +24,9 @@ export class Report {
 
   @Prop()
   meanDistance?: number;
+
+  @Prop({ required: true })
+  reportedAt: number;
 }
 
 export const ReportSchema = SchemaFactory.createForClass(Report);

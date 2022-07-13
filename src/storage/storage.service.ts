@@ -18,7 +18,7 @@ export class StorageService {
         flag: 'wx',
       });
     } catch (error) {
-      this.logger.error(error);
+      this.logger.error(`StoringViolator - ${error}`);
     }
   }
 
@@ -37,7 +37,7 @@ export class StorageService {
         },
       );
     } catch (error) {
-      this.logger.error(error);
+      this.logger.error(`StoringReport - ${error}`);
     }
   }
 }

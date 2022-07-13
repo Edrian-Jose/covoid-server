@@ -12,6 +12,13 @@ const capturers = new Map<string, cv.VideoCapture>();
 export default async function (job: Job, cb: DoneCallback) {
   const detectedPersons = new Map<string, DetectedPerson>();
   const violators = new Map<string, ViolatorEntity>();
+  const blankData = {
+    persons: {},
+    violators: {},
+    id: job.data.id,
+    meanDistance: 0,
+  };
+  console.log(`SDD [${process.pid}]`);
   try {
     if (!model) {
       tf.getBackend();
@@ -35,14 +42,14 @@ export default async function (job: Job, cb: DoneCallback) {
       const frame = vcap.read();
       buffer = cv.imencode('.jpg', frame);
     } else {
-      cb(new Error('No image or stream url provided'), null);
+      cb(new Error('No image or stream url provided'), job.data);
     }
 
     const imgTensor = tf.tidy(() => tf.node.decodeImage(buffer, 3));
     const detections = await model.detect(imgTensor as tf.Tensor3D);
     imgTensor.dispose();
     if (!detections.length) {
-      cb(null, null);
+      cb(null, blankData);
     }
 
     detections.forEach((detection) => {
@@ -133,7 +140,7 @@ export default async function (job: Job, cb: DoneCallback) {
     });
   } catch (error) {
     console.log(error);
-    cb(error, null);
+    cb(error, job.data);
   }
   return;
   // STARTUP: 3s, DETECT: 200-250ms
