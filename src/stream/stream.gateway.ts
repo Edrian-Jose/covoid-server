@@ -8,7 +8,6 @@ import {
   OnGatewayInit,
   SubscribeMessage,
   WebSocketGateway,
-  WebSocketServer,
   WsException,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
@@ -79,7 +78,7 @@ export class StreamGateway
       throw new WsException("Camera doesn't exist");
     }
     const rtData = await this.streamService.connect(data.id, client.id);
-    client.join(rtData.id);
+    client.join(rtData._id);
 
     return rtData;
   }

@@ -1,4 +1,4 @@
-import { ClientUser, DeviceRTData, Violation, Violator } from './stream.d';
+import { ClientUser } from './stream.d';
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
@@ -9,19 +9,21 @@ import { Queue } from 'bull';
 import { InjectQueue } from '@nestjs/bull';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { Server } from 'socket.io';
+import { DataService } from 'src/data/data.service';
 @Injectable()
 export class StreamService {
   constructor(
     @InjectModel(Camera.name) private cameraModel: Model<CameraDocument>,
     @InjectQueue('stream') private streamQueue: Queue,
     private schedulerRegistry: SchedulerRegistry,
+    private dataService: DataService,
   ) {}
 
   public socket: Server;
   public users = new Map<string, ClientUser>();
   public clientsDevice = new Map<string, string>();
   public devices = new Map<string, OnvifDevice>();
-  public realTimeData = new Map<string, DeviceRTData>();
+  public deviceWathers = new Map<string, string[]>();
   public devicesMeta = new Map<string, DeviceMeta>();
 
   async discover(): Promise<DevicesMeta> {
@@ -60,7 +62,6 @@ export class StreamService {
         const meta = {
           ...camera.toObject(),
           _id: camera._id.toString(),
-          id,
           address: odevice.address,
           init: true,
           lastFrame,
@@ -68,6 +69,8 @@ export class StreamService {
         };
         this.devicesMeta.set(id, meta);
       }
+
+      this.dataService.addViolatorsData(id);
     }
     return this.devicesMeta;
   }
@@ -95,7 +98,7 @@ export class StreamService {
 
   async remove(id: string) {
     this.devices.delete(id);
-    this.realTimeData.delete(id);
+    this.deviceWathers.delete(id);
     this.devicesMeta.delete(id);
     for (const [clientId, cameraId] of this.clientsDevice) {
       if (cameraId == id) {
@@ -104,19 +107,12 @@ export class StreamService {
     }
   }
 
-  async connect(id: string, clientId: string): Promise<DeviceRTData | null> {
+  async connect(id: string, clientId: string): Promise<DeviceMeta | null> {
     if (!this.devicesMeta.has(id)) return null;
-    let data = this.realTimeData.has(id) ? this.realTimeData.get(id) : null;
+    let data = this.deviceWathers.has(id) ? this.deviceWathers.get(id) : null;
 
     if (!data) {
-      data = {
-        id,
-        connected: [clientId],
-        violators: {
-          fmd: [],
-          sdd: [],
-        },
-      };
+      data = [clientId];
       // Broadcast stream every 33ms(30fps) to the clients
 
       const interval = setInterval(async () => {
@@ -142,8 +138,8 @@ export class StreamService {
       this.schedulerRegistry.addInterval(`stream:${id}`, interval);
     } else {
       // If client is not on the list of connected clients
-      if (!data.connected.includes(clientId)) {
-        data.connected.push(clientId);
+      if (!data.includes(clientId)) {
+        data.push(clientId);
         if (this.clientsDevice.has(clientId)) {
           const oldDeviceId = this.clientsDevice.get(clientId);
           await this.disconnect(oldDeviceId, clientId);
@@ -151,33 +147,33 @@ export class StreamService {
       }
     }
     this.clientsDevice.set(clientId, id);
-    this.realTimeData.set(id, data);
-    return this.realTimeData.get(id);
+    this.deviceWathers.set(id, data);
+    return this.devicesMeta.get(id);
   }
 
-  async disconnect(id: string, clientId: string): Promise<DeviceRTData | null> {
+  async disconnect(id: string, clientId: string): Promise<DeviceMeta | null> {
     // TODO: Add a guard decorator above
-    const data = this.realTimeData.has(id) ? this.realTimeData.get(id) : null;
+    const data = this.deviceWathers.has(id) ? this.deviceWathers.get(id) : null;
     if (!data) return null;
-    if (data.connected.includes(clientId)) {
-      const index = data.connected.indexOf(clientId, 0);
+    if (data.includes(clientId)) {
+      const index = data.indexOf(clientId, 0);
       if (index > -1) {
-        data.connected.splice(index, 1);
+        data.splice(index, 1);
       }
     }
-    if (!data.connected.length) {
-      if (this.realTimeData.has(id)) {
-        this.realTimeData.delete(id);
+    if (!data.length) {
+      if (this.deviceWathers.has(id)) {
+        this.deviceWathers.delete(id);
       }
 
       if (this.schedulerRegistry.doesExist('interval', `stream:${id}`)) {
         this.schedulerRegistry.deleteInterval(`stream:${id}`);
       }
     } else {
-      this.realTimeData.set(id, data);
+      this.deviceWathers.set(id, data);
     }
     this.clientsDevice.delete(clientId);
-    return data;
+    return this.devicesMeta.get(id);
   }
 
   async fetch(id: string): Promise<string | null> {
@@ -224,22 +220,5 @@ export class StreamService {
     } catch (error) {
       return false;
     }
-  }
-
-  async setViolators(id: string, type: Violation, violators: Violator[]) {
-    if (!this.realTimeData.has(id)) {
-      return;
-    }
-    const data = this.realTimeData.get(id);
-    const violatorProp = type == 'NoMask' ? 'fmd' : 'sdd';
-    const violatorsRepo = data.violators[violatorProp];
-
-    const oldCount = violatorsRepo.length;
-    const newCount = violators.length;
-    if (oldCount !== newCount) {
-      // TODO: Trigger notification, saving data, storing data
-    }
-    data.violators[violatorProp] = violators;
-    return this.realTimeData.get(id);
   }
 }

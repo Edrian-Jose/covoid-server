@@ -18,7 +18,7 @@ export class Violator {
   score: number;
 
   @Prop([String])
-  contact?: [Violator['entityId']];
+  contact?: Violator['entityId'][];
 }
 
 export const ViolatorSchema = SchemaFactory.createForClass(Violator);

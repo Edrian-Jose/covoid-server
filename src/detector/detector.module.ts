@@ -1,9 +1,10 @@
+import { StreamModule } from 'src/stream/stream.module';
 import { Module } from '@nestjs/common';
 import { DetectorService } from './detector.service';
 import { DetectorGateway } from './detector.gateway';
 import { BullModule } from '@nestjs/bull';
 import { join } from 'path';
-import { StreamModule } from 'src/stream/stream.module';
+import { DataModule } from 'src/data/data.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { StreamModule } from 'src/stream/stream.module';
       processors: [join(__dirname, 'fmd.processor.js')],
     }),
     StreamModule,
+    DataModule,
   ],
   providers: [DetectorService, DetectorGateway],
 })

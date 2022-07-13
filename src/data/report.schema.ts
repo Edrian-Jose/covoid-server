@@ -17,10 +17,10 @@ export class Report {
   type: Violation;
 
   @Prop({ required: true, type: [String] })
-  entities: [string];
+  entities: string[];
 
   @Prop({ required: true, type: [String] })
-  violators: [Violator['entityId']];
+  violators: Violator['entityId'][];
 
   @Prop()
   meanDistance?: number;

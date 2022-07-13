@@ -1,4 +1,4 @@
-import { Violator } from './../stream/stream.d';
+import { ViolatorEntity } from './../stream/stream.d';
 import { Job, DoneCallback } from 'bull';
 import * as tf from '@tensorflow/tfjs-node';
 import * as CocoSsd from '@tensorflow-models/coco-ssd';
@@ -11,7 +11,7 @@ const capturers = new Map<string, cv.VideoCapture>();
 
 export default async function (job: Job, cb: DoneCallback) {
   const detectedPersons = new Map<string, DetectedPerson>();
-  const violators = new Map<string, Violator>();
+  const violators = new Map<string, ViolatorEntity>();
   try {
     if (!model) {
       tf.getBackend();
@@ -57,6 +57,7 @@ export default async function (job: Job, cb: DoneCallback) {
     });
     const img = cv.imdecode(buffer);
     const ids = Array.from(detectedPersons.keys());
+    const distances: number[] = [];
     if (job.data.calibration) {
       const { focalLength, shoulderLength, threshold } = job.data.calibration;
       for (let i = 0; i < ids.length; i++) {
@@ -78,6 +79,7 @@ export default async function (job: Job, cb: DoneCallback) {
           const ppm = ijW / shoulderLength;
           const ijXm = ijX / ppm;
           const ijD = Math.sqrt(Math.pow(ijXm, 2) + Math.pow(ijY, 2));
+          distances.push(ijD);
           if (ijD < threshold) {
             if (!jPerson.contact.includes(iKey)) {
               detectedPersons.get(jKey).contact.push(iKey);
@@ -126,10 +128,13 @@ export default async function (job: Job, cb: DoneCallback) {
       persons: Object.fromEntries(detectedPersons.entries()),
       violators: Object.fromEntries(violators.entries()),
       id: job.data.id,
+      meanDistance:
+        distances.reduce((a, b) => a + b, 0) / distances.length || 0,
     });
   } catch (error) {
     console.log(error);
     cb(error, null);
   }
+  return;
   // STARTUP: 3s, DETECT: 200-250ms
 }

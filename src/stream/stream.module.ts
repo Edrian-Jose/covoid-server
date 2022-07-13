@@ -7,6 +7,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { BullModule } from '@nestjs/bull';
 import { JwtService } from '@nestjs/jwt';
 import { UsersModule } from 'src/users/users.module';
+import { DataModule } from 'src/data/data.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { UsersModule } from 'src/users/users.module';
     }),
     UsersModule,
     ConfigModule,
+    DataModule,
   ],
   providers: [StreamService, StreamGateway, JwtService],
   exports: [StreamService],

@@ -1,33 +1,31 @@
 import { Injectable, Logger } from '@nestjs/common';
-import Bull, { Queue } from 'bull';
+import { JobId, Queue } from 'bull';
 import { Interval } from '@nestjs/schedule';
 import { InjectQueue } from '@nestjs/bull';
+import { DataService } from 'src/data/data.service';
 import { StreamService } from 'src/stream/stream.service';
+import { DetectionData, DetectionState } from './detector';
+import { createEmptyDetectionData } from './detector.provider';
 
-export type DetectionState = 'UNKNOWN' | 'READY' | 'IDLE' | 'ACTIVE';
-
-export interface Jobs {
-  sdd: Bull.JobId[];
-  fmd: Bull.JobId[];
-}
 @Injectable()
 export class DetectorService {
-  public jobs: Jobs = {
-    sdd: [],
-    fmd: [],
-  };
+  public jobs: DetectionData<JobId> = createEmptyDetectionData<JobId>();
 
   private readonly logger = new Logger(DetectorService.name);
-
   private detectionState: DetectionState = 'IDLE';
 
   constructor(
     @InjectQueue('sdd') private sddQueue: Queue,
     @InjectQueue('fmd') private fmdQueue: Queue,
     private streamService: StreamService,
+    private dataService: DataService,
   ) {}
 
-  @Interval(1000)
+  async cleanQueues() {
+    await this.sddQueue.empty();
+    await this.fmdQueue.empty();
+  }
+  // @Interval(1000)
   async detectSdd() {
     if (this.detectionState == 'UNKNOWN') {
       return;
@@ -41,11 +39,12 @@ export class DetectorService {
       const isCompleted = await job.isCompleted();
       if (isCompleted) {
         this.jobs.sdd.shift();
-        const value = job.returnvalue;
-        this.streamService.setViolators(
-          value.id,
+        this.dataService.setViolatorsData(
+          job.returnvalue.id,
           'NoSD',
-          Object.values(value.violators),
+          Object.values(job.returnvalue.violators),
+          Object.keys(job.returnvalue.persons),
+          job.returnvalue.meanDistance,
         );
       }
     }
@@ -70,7 +69,7 @@ export class DetectorService {
     }
   }
 
-  // @Interval(1000)
+  @Interval(2000)
   async detectFmd() {
     if (this.detectionState == 'UNKNOWN') {
       return;
@@ -83,14 +82,21 @@ export class DetectorService {
         return;
       }
       const isCompleted = await job.isCompleted();
+
       if (isCompleted) {
         this.jobs.fmd.shift();
-        const value = job.returnvalue;
-        this.streamService.setViolators(
-          value.id,
+        this.dataService.setViolatorsData(
+          job.returnvalue.id,
           'NoMask',
-          Object.values(value.violators),
+          Object.values(job.returnvalue.violators),
+          Object.keys(job.returnvalue.faces),
         );
+        job.remove();
+      }
+      if (await job.isFailed()) {
+        this.jobs.fmd.shift();
+        job.remove();
+        this.logger.error(job.failedReason);
       }
     }
     for (const [id] of this.streamService.devicesMeta) {

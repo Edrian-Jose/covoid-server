@@ -1,5 +1,5 @@
 import { DoneCallback, Job } from 'bull';
-import { Violator } from 'src/stream/stream';
+import { ViolatorEntity } from 'src/stream/stream';
 import { DetectedFace } from './detector';
 import * as BlazeFace from '@tensorflow-models/blazeface';
 import * as cv from 'opencv4nodejs';
@@ -12,7 +12,7 @@ const capturers = new Map<string, cv.VideoCapture>();
 
 export default async function (job: Job, cb: DoneCallback) {
   const detectedFaces = new Map<string, DetectedFace>();
-  const violators = new Map<string, Violator>();
+  const violators = new Map<string, ViolatorEntity>();
 
   try {
     if (!faceModel) {
@@ -129,4 +129,5 @@ export default async function (job: Job, cb: DoneCallback) {
     console.log(error);
     cb(error, null);
   }
+  return;
 }

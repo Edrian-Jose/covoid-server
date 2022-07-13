@@ -22,7 +22,7 @@ export interface ClientUser extends User {
 export type Violation = 'NoMask' | 'NoSD';
 export type EntityType = 'Person' | 'Face';
 
-export interface Violator {
+export interface ViolatorEntity {
   id: string;
   type: Violation;
   image: string;
@@ -41,7 +41,7 @@ export interface DeviceRTData {
   id: string;
   connected: string[];
   violators: {
-    fmd: Violator[];
-    sdd: Violator[];
+    fmd: ViolatorEntity[];
+    sdd: ViolatorEntity[];
   };
 }

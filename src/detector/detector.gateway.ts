@@ -6,6 +6,6 @@ export class DetectorGateway implements OnGatewayInit {
   constructor(private detectorService: DetectorService) {}
   async afterInit() {
     //
-    console.log(this.detectorService.jobs.fmd.length);
+    await this.detectorService.cleanQueues();
   }
 }
