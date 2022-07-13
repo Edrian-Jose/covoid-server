@@ -11,13 +11,13 @@ import { DataModule } from 'src/data/data.module';
     BullModule.registerQueue({
       name: 'sdd',
       processors: [
-        { path: join(__dirname, 'sdd.processor.js'), concurrency: 2 },
+        { path: join(__dirname, 'sdd.processor.js'), concurrency: 3 },
       ],
     }),
     BullModule.registerQueue({
       name: 'fmd',
       processors: [
-        { path: join(__dirname, 'fmd.processor.js'), concurrency: 4 },
+        { path: join(__dirname, 'fmd.processor.js'), concurrency: 3 },
       ],
     }),
     StreamModule,

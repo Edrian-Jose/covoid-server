@@ -28,6 +28,8 @@ export class DetectorService {
     await this.sddQueue.clean(120000, 'wait');
     await this.sddQueue.clean(1000, 'failed');
     await this.fmdQueue.clean(1000, 'failed');
+    await this.sddQueue.clean(7000, 'delayed');
+    await this.fmdQueue.clean(7000, 'delayed');
     await this.sddQueue.clean(1000);
     await this.fmdQueue.clean(1000);
   }

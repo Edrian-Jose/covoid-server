@@ -12,6 +12,7 @@ const capturers = new Map<string, cv.VideoCapture>();
 export default async function (job: Job, cb: DoneCallback) {
   const detectedPersons = new Map<string, DetectedPerson>();
   const violators = new Map<string, ViolatorEntity>();
+  let defaultDistance = 0;
   const blankData = {
     persons: {},
     violators: {},
@@ -66,6 +67,7 @@ export default async function (job: Job, cb: DoneCallback) {
     const distances: number[] = [];
     if (job.data.calibration) {
       const { focalLength, shoulderLength, threshold } = job.data.calibration;
+      defaultDistance = threshold;
       for (let i = 0; i < ids.length; i++) {
         const iKey = ids[i];
         const iPerson = detectedPersons.get(iKey);
@@ -135,7 +137,8 @@ export default async function (job: Job, cb: DoneCallback) {
       violators: Object.fromEntries(violators.entries()),
       id: job.data.id,
       meanDistance:
-        distances.reduce((a, b) => a + b, 0) / distances.length || 0,
+        distances.reduce((a, b) => a + b, 0) / distances.length ||
+        defaultDistance,
     });
   } catch (error) {
     console.log(error);
