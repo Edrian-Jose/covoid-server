@@ -19,6 +19,9 @@ export class Violator {
 
   @Prop([String])
   contact?: Violator['entityId'][];
+
+  @Prop({ default: 0, required: true })
+  contactSize: number;
 }
 
 export const ViolatorSchema = SchemaFactory.createForClass(Violator);
