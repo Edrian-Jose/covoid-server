@@ -1,5 +1,5 @@
 import { Report, ReportDocument } from './report.schema';
-import { Injectable } from '@nestjs/common';
+import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { DeviceMeta, Violation, ViolatorEntity } from 'src/stream/stream';
@@ -11,6 +11,7 @@ import { CountData, FactorData } from './data';
 import { Count, CountDocument } from './count.schema';
 import { Cron } from '@nestjs/schedule';
 import { Server } from 'socket.io';
+import * as moment from 'moment';
 
 @Injectable()
 export class DataService {
@@ -18,6 +19,7 @@ export class DataService {
     @InjectModel(Violator.name) private violatorModel: Model<ViolatorDocument>,
     @InjectModel(Report.name) private reportModel: Model<ReportDocument>,
     @InjectModel(Count.name) private countModel: Model<CountDocument>,
+    @Inject(forwardRef(() => StorageService))
     private storageService: StorageService,
   ) {}
 
@@ -107,6 +109,33 @@ export class DataService {
     report._id = _report._id;
     _report.save();
     this.storageService.storeReport(report, _violatorsIds);
+  }
+
+  async getViolatorsData(
+    from: number,
+    to: number = moment().valueOf(),
+    types: Violation[] = ['NoMask', 'NoSD'],
+    scoreRange: [number, number] = [0, 1],
+    contactRange: [number, number] = [0, 100],
+  ) {
+    return await this.violatorModel
+      .find({
+        created_at: {
+          $gte: moment(from),
+          $lte: moment(to),
+        },
+        type: { $in: types },
+        score: {
+          $gte: scoreRange[0],
+          $lte: scoreRange[1],
+        },
+        contactSize: {
+          $gte: contactRange[0],
+          $lte: contactRange[1],
+        },
+      })
+      .sort('-createdAt')
+      .exec();
   }
 
   async setCountData(

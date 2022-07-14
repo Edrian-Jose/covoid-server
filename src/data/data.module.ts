@@ -1,5 +1,5 @@
 import { StorageModule } from './../storage/storage.module';
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { DataService } from './data.service';
 import { Report, ReportSchema } from './report.schema';
@@ -15,7 +15,7 @@ import { AuthModule } from 'src/auth/auth.module';
     ]),
     MongooseModule.forFeature([{ name: Report.name, schema: ReportSchema }]),
     MongooseModule.forFeature([{ name: Count.name, schema: CountSchema }]),
-    StorageModule,
+    forwardRef(() => StorageModule),
     AuthModule,
   ],
   providers: [DataService, DataGateway],

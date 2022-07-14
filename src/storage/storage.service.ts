@@ -1,17 +1,15 @@
-import { Violator, ViolatorDocument } from 'src/data/violator.schema';
-import { Injectable, Logger } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
+import { forwardRef, Inject, Injectable, Logger } from '@nestjs/common';
 import * as fs from 'fs';
 import { join } from 'path';
 import { Report } from 'src/data/report.schema';
 import { Violation, ViolatorEntity } from 'src/stream/stream';
-import { Model } from 'mongoose';
 import * as moment from 'moment';
+import { DataService } from 'src/data/data.service';
 
 @Injectable()
 export class StorageService {
   constructor(
-    @InjectModel(Violator.name) private violatorModel: Model<ViolatorDocument>,
+    @Inject(forwardRef(() => DataService)) private dataService: DataService,
   ) {}
 
   private logger = new Logger();
@@ -42,29 +40,26 @@ export class StorageService {
 
   async getViolators(
     from: number,
-    to: number = moment().valueOf(),
-    types: Violation[] = ['NoMask', 'NoSD'],
-    scoreRange: [number, number] = [0, 1],
-    contactRange: [number, number] = [0, 100],
+    to: number,
+    types: Violation[],
+    scoreRange: [number, number],
+    contactRange: [number, number],
   ) {
-    return await this.violatorModel
-      .find({
-        created_at: {
-          $gte: moment(from),
-          $lte: moment(to),
-        },
-        type: { $in: types },
-        score: {
-          $gte: scoreRange[0],
-          $lte: scoreRange[1],
-        },
-        contactSize: {
-          $gte: contactRange[0],
-          $lte: contactRange[1],
-        },
-      })
-      .sort('-createdAt')
-      .exec();
+    const violatorsData = await this.dataService.getViolatorsData(
+      from,
+      to,
+      types,
+      scoreRange,
+      contactRange,
+    );
+    const violators: ViolatorEntity[] = [];
+    for (const _violator of violatorsData) {
+      const violator = await this.getViolator(_violator._id);
+      if (violator) {
+        violators.push(violator);
+      }
+    }
+    return violators;
   }
 
   async storeReport(report: Report, _violatorIds: string[]) {

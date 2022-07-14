@@ -1,15 +1,12 @@
-import { Module } from '@nestjs/common';
+import { DataModule } from 'src/data/data.module';
+import { forwardRef, Module } from '@nestjs/common';
 import { StorageService } from './storage.service';
 import { StorageController } from './storage.controller';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Violator, ViolatorSchema } from 'src/data/violator.schema';
 
 @Module({
-  imports: [
-    MongooseModule.forFeature([
-      { name: Violator.name, schema: ViolatorSchema },
-    ]),
-  ],
+  imports: [forwardRef(() => DataModule)],
   providers: [StorageService],
   exports: [StorageService],
   controllers: [StorageController],

@@ -32,7 +32,7 @@ export class StorageController {
   @Get('/violators')
   async getViolators(@MessageBody() body: GetViolatorsDto) {
     const { from, to, types, scoreRange, contactRange } = body;
-    return this.storageService.getViolators(
+    return await this.storageService.getViolators(
       from,
       to,
       types,
