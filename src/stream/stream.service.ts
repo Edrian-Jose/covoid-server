@@ -2,7 +2,12 @@ import { ClientUser } from './stream.d';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { OnvifDevice, Probe, startProbe } from 'node-onvif-ts';
+import {
+  OnvifDevice,
+  OnvifDeviceConfigs,
+  Probe,
+  startProbe,
+} from 'node-onvif-ts';
 import { Camera, CameraDocument } from './camera.schema';
 import { DeviceMeta, DevicesMeta } from './stream';
 import { Queue } from 'bull';
@@ -37,10 +42,6 @@ export class StreamService {
   async discover(): Promise<DevicesMeta> {
     const probes: Probe[] = await startProbe();
     for (const probe of probes) {
-      const odevice = new OnvifDevice({
-        xaddr: probe.xaddrs[0],
-      });
-
       let camera = await this.cameraModel.findOne({ urn: probe.urn }).exec();
       const id = camera._id.toString();
       if (!camera) {
@@ -50,21 +51,57 @@ export class StreamService {
         });
         camera = await camera.save();
       }
+      const deviceConfig: OnvifDeviceConfigs = {
+        xaddr: probe.xaddrs[0],
+      };
+      if (camera.needAuth) {
+        const { login, password } = camera;
+        if (login && password) {
+          deviceConfig.user = login;
+          deviceConfig.pass = password;
+        }
+      }
+      const odevice = new OnvifDevice(deviceConfig);
+
       if (camera.needAuth) {
         const { login, password } = camera;
         if (login && password) {
           odevice.setAuth(login, password);
         }
       }
+
       if (this.devices.has(id)) {
         continue;
       }
-
       await odevice.init();
-      this.devices.set(id, odevice);
+      let lastFrame = 'none';
+      const url = odevice.getUdpStreamUrl();
+      let hasError = false;
 
-      const lastFrame =
-        (await odevice.fetchSnapshot()).body.toString('base64') || 'none';
+      try {
+        lastFrame = await new Promise((resolve, reject) => {
+          const timeout = setTimeout(() => {
+            reject('Took too long to respond');
+          }, 5000);
+
+          odevice
+            .fetchSnapshot()
+            .then((snap) => {
+              clearTimeout(timeout);
+              resolve(snap.body.toString('base64'));
+            })
+            .catch((error) => {
+              reject(error);
+            });
+        });
+      } catch (error) {
+        hasError = true;
+        this.logger.error(error);
+      } finally {
+        if (!hasError) {
+          this.devices.set(id, odevice);
+        }
+      }
 
       if (!this.devicesMeta.has(id)) {
         const meta = {
@@ -73,14 +110,55 @@ export class StreamService {
           address: odevice.address,
           init: true,
           lastFrame,
-          url: odevice.getUdpStreamUrl(),
+          url,
+          xaddr: probe.xaddrs[0],
         };
         this.devicesMeta.set(id, meta);
       }
-
       this.dataService.addMonitoringData(this.devicesMeta.get(id));
     }
+
     return this.devicesMeta;
+  }
+
+  async calibrate(
+    id: string,
+    focalLength: number,
+    shoulderLength: number,
+    threshold: number,
+  ) {
+    const camera = await this.cameraModel.findById(id).exec();
+    if (!camera) return;
+    camera.focalLength = focalLength;
+    camera.shoulderLength = shoulderLength;
+    camera.threshold = threshold;
+    return await camera.save();
+  }
+
+  async auth(id: string, login: string, password: string) {
+    if (!this.devicesMeta.has(id)) return;
+
+    const camera = await this.cameraModel.findById(id).exec();
+    if (!camera) return;
+    camera.needAuth = true;
+    camera.login = login;
+    camera.password = password;
+
+    if (this.devices.has(id)) {
+      this.devices.get(id).setAuth(login, password);
+    } else {
+      this.devices.set(
+        id,
+        new OnvifDevice({
+          xaddr: this.devicesMeta.get(id).xaddr,
+        }),
+      );
+      this.devices.get(id).setAuth(login, password);
+      this.devices.get(id).init();
+      console.log(this.devices.get(id).getUdpStreamUrl());
+    }
+
+    return await camera.save();
   }
 
   async refresh() {
@@ -116,7 +194,7 @@ export class StreamService {
   }
 
   async connect(id: string, clientId: string): Promise<DeviceMeta | null> {
-    if (!this.devicesMeta.has(id)) return null;
+    if (!this.devices.has(id)) return null;
     let data = this.deviceWathers.has(id) ? this.deviceWathers.get(id) : null;
 
     if (!data) {
@@ -160,7 +238,6 @@ export class StreamService {
   }
 
   async disconnect(id: string, clientId: string): Promise<DeviceMeta | null> {
-    // TODO: Add a guard decorator above
     const data = this.deviceWathers.has(id) ? this.deviceWathers.get(id) : null;
     if (!data) return null;
     if (data.includes(clientId)) {

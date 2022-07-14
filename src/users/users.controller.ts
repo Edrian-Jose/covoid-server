@@ -9,6 +9,7 @@ import {
   Request,
   NotFoundException,
   BadRequestException,
+  Put,
 } from '@nestjs/common';
 import { AuthService } from 'src/auth/auth.service';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
@@ -59,7 +60,7 @@ export class UsersController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Post('/update')
+  @Put('/update')
   async updateUser(@Body() userBody: UpdateUserDto, @Request() req) {
     const user = await this.userService.findById(userBody._id);
     if (!user) {

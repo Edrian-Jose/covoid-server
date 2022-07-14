@@ -81,15 +81,16 @@ export class DetectorService {
       return;
     }
 
-    for (const [id, meta] of this.streamService.devicesMeta) {
-      const data = await this.streamService.getUrl(id);
+    for (const [id] of this.streamService.devices) {
+      const meta = this.streamService.devicesMeta.get(id);
+      const data = await this.streamService.fetch(id);
       if (!data) {
         continue;
       }
       const newJob = await this.sddQueue.add({
         id,
         time: new Date().getMilliseconds(),
-        url: data,
+        img: data,
         calibration: {
           focalLength: meta.focalLength,
           shoulderLength: meta.shoulderLength,
@@ -150,14 +151,14 @@ export class DetectorService {
     if (this.detectionState == 'UNKNOWN') {
       return;
     }
-    for (const [id] of this.streamService.devicesMeta) {
-      const data = await this.streamService.getUrl(id);
+    for (const [id] of this.streamService.devices) {
+      const data = await this.streamService.fetch(id);
       if (!data) {
         continue;
       }
       const newJob = await this.fmdQueue.add({
         time: new Date().toLocaleTimeString(),
-        url: data,
+        img: data,
         id,
       });
       this.jobs.fmd.push(newJob.id);

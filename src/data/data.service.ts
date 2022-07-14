@@ -87,8 +87,8 @@ export class DataService {
         entityId: violator.id,
         type: violator.type,
         score: violator.score,
-        contact: violator.contact,
-        contactSize: violator.contact.length,
+        contact: violator.contact || [],
+        contactSize: violator.contact ? violator.contact.length : 0,
       });
       violatorsIds.push(_violator.entityId);
       _violatorsIds.push(_violator._id);

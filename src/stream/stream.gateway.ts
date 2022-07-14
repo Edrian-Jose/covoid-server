@@ -16,6 +16,7 @@ import { UsersService } from 'src/users/users.service';
 import { ConnectCameraDto } from './dto/connect-camera.dto';
 import { StreamService } from './stream.service';
 import { JwtService } from '@nestjs/jwt';
+import { CalibrateCameraDto } from './dto/calibrate-camera.dto';
 
 @WebSocketGateway()
 export class StreamGateway
@@ -31,17 +32,18 @@ export class StreamGateway
   private readonly logger = new Logger(StreamGateway.name);
 
   async afterInit(server: Server) {
-    try {
-      await this.streamService.discover();
-    } catch (error) {
-      this.logger.error('Initial discovery failed');
-    }
-
     this.streamService.socket = server;
+    // try {
+
+    // } catch (error) {
+    //   console.log(error);
+
+    //   this.logger.error('Initial discovery failed');
+    // }
+    await this.streamService.discover();
     this.logger.log(
       `${this.streamService.devices.size} DEVICES(S) ARE CONNNECTED`,
     );
-    //Load models in the detector gateway
   }
 
   async handleConnection(@ConnectedSocket() client: Socket) {
@@ -83,9 +85,41 @@ export class StreamGateway
       throw new WsException("Camera doesn't exist");
     }
     const rtData = await this.streamService.connect(data.id, client.id);
-    client.join(rtData._id);
+    if (rtData) {
+      client.join(rtData._id);
+    }
 
     return rtData;
+  }
+
+  @UseGuards(WsGuard)
+  @SubscribeMessage('stream:calibrate')
+  async handleStreamCalibrate(@MessageBody() data: CalibrateCameraDto) {
+    if (!this.streamService.devicesMeta.has(data.id)) {
+      throw new WsException("Camera doesn't exist");
+    }
+    const meta = this.streamService.devicesMeta.get(data.id);
+    const newMeta = await this.streamService.calibrate(
+      data.id,
+      data.focalLength,
+      data.shoulderLength,
+      data.threshold,
+    );
+    meta.focalLength = newMeta.focalLength;
+    meta.shoulderLength = newMeta.shoulderLength;
+    meta.threshold = newMeta.threshold;
+
+    return newMeta;
+  }
+
+  @UseGuards(WsGuard)
+  @SubscribeMessage('stream:auth')
+  async handleStreamAuth(@MessageBody() data: ConnectCameraDto) {
+    if (!this.streamService.devicesMeta.has(data.id)) {
+      throw new WsException("Camera doesn't exist");
+    }
+
+    return await this.streamService.auth(data.id, data.login, data.password);
   }
 
   @UseGuards(WsGuard)
