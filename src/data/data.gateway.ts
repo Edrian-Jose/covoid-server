@@ -4,6 +4,7 @@ import {
   WebSocketGateway,
   OnGatewayInit,
   MessageBody,
+  WsException,
 } from '@nestjs/websockets';
 import { WsGuard } from 'src/auth/ws-auth.guard';
 import { DataService } from './data.service';
@@ -56,6 +57,9 @@ export class DataGateway implements OnGatewayInit {
   @UseGuards(WsGuard)
   @SubscribeMessage('data:mean:combined')
   getManyMeanCountData(@MessageBody() { id }: GetMeanDataDto) {
+    if (!this.dataService.meanCountData.size) {
+      throw new WsException('No violators yet');
+    }
     return this.dataService.getManyMeanCountData(id || []);
   }
 }

@@ -182,7 +182,7 @@ export class DataService {
     return this.meanCountData.get(id);
   }
 
-  async getManyMeanCountData(ids: string[]): Promise<CountData> {
+  async getManyMeanCountData(ids: string[]): Promise<CountData | undefined> {
     const meanCount = ids.length
       ? new Map<string, CountData>()
       : this.meanCountData;
@@ -216,6 +216,7 @@ export class DataService {
       mean.score += count.score;
     });
 
+    if (!mean) return;
     for (const factor in mean.factors) {
       if (Object.prototype.hasOwnProperty.call(mean.factors, factor)) {
         const x: FactorData = mean.factors[factor];
@@ -230,7 +231,7 @@ export class DataService {
     mean.p2p[1] /= meanCount.size;
     mean.p2p[2] /= meanCount.size;
     mean.score /= meanCount.size;
-
+    mean.cameraId = 'N/A';
     return mean;
   }
 }
