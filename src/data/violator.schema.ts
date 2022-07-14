@@ -1,12 +1,12 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
+import { Document, Types } from 'mongoose';
 import { Violation } from 'src/stream/stream';
 
 export type ViolatorDocument = Violator & Document;
 
 @Schema({ timestamps: true })
 export class Violator {
-  _id?: string;
+  _id?: Types.ObjectId;
 
   @Prop({ required: true })
   entityId: string;

@@ -1,7 +1,7 @@
 import { Report, ReportDocument } from './report.schema';
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { DeviceMeta, Violation, ViolatorEntity } from 'src/stream/stream';
 import { Violator, ViolatorDocument } from './violator.schema';
 import { DetectionData } from 'src/detector/detector';
@@ -81,7 +81,7 @@ export class DataService {
     this.server.emit('auto:data:violator', this.violatorsData.get(id));
     this.setCountData(id, type, violators, entities, meanDistance);
     const violatorsIds: string[] = [];
-    const _violatorsIds: string[] = [];
+    const _violatorsIds: Types.ObjectId[] = [];
     for (const violator of violators) {
       const _violator = new this.violatorModel({
         entityId: violator.id,
@@ -93,13 +93,15 @@ export class DataService {
       violatorsIds.push(_violator.entityId);
       _violatorsIds.push(_violator._id);
       _violator.save();
-      this.storageService.storeViolator(_violator._id, violator);
+      await this.storageService.storeViolator(_violator._id, violator);
     }
     const report: Report = {
       cameraId: id,
       entities,
       type,
-      violators: violatorsIds,
+      violators: _violatorsIds,
+      entitiesCount: entities ? entities.length : 0,
+      violatorsCount: violatorsIds.length,
     };
     if (meanDistance) {
       report.meanDistance = meanDistance;
@@ -108,7 +110,11 @@ export class DataService {
     const _report = new this.reportModel(report);
     report._id = _report._id;
     _report.save();
-    this.storageService.storeReport(report, _violatorsIds);
+    this.server.emit(
+      'auto:data:report',
+      this.storageService.populateReport(_report),
+    );
+    this.storageService.storeReport(report);
   }
 
   async getViolatorsData(
@@ -132,6 +138,33 @@ export class DataService {
         contactSize: {
           $gte: contactRange[0],
           $lte: contactRange[1],
+        },
+      })
+      .sort('-createdAt')
+      .exec();
+  }
+
+  async getReportData(
+    from: number,
+    to: number = moment().valueOf(),
+    types: Violation[] = ['NoMask', 'NoSD'],
+    entitiesRange: [number, number] = [0, 100],
+    violatorsRange: [number, number] = [0, 100],
+  ) {
+    return await this.reportModel
+      .find({
+        created_at: {
+          $gte: moment(from),
+          $lte: moment(to),
+        },
+        type: { $in: types },
+        entitiesCount: {
+          $gte: entitiesRange[0],
+          $lte: entitiesRange[1],
+        },
+        violatorsCount: {
+          $gte: violatorsRange[0],
+          $lte: violatorsRange[1],
         },
       })
       .sort('-createdAt')

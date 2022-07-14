@@ -1,10 +1,11 @@
 import { forwardRef, Inject, Injectable, Logger } from '@nestjs/common';
 import * as fs from 'fs';
 import { join } from 'path';
-import { Report } from 'src/data/report.schema';
+import { PopulatedReport, Report } from 'src/data/report.schema';
 import { Violation, ViolatorEntity } from 'src/stream/stream';
-import * as moment from 'moment';
 import { DataService } from 'src/data/data.service';
+import { Violator } from 'src/data/violator.schema';
+import { Types } from 'mongoose';
 
 @Injectable()
 export class StorageService {
@@ -34,7 +35,18 @@ export class StorageService {
       const data = await fs.promises.readFile(join(dir, `${_id}.json`));
       return JSON.parse(data.toString());
     } catch (error) {
-      throw error;
+      return null;
+    }
+  }
+
+  async getReport(_id: string): Promise<PopulatedReport | null> {
+    try {
+      const dir = join(__dirname, `reports`);
+      const data = await fs.promises.readFile(join(dir, `${_id}.json`));
+      const report: Report = JSON.parse(data.toString());
+      return await this.populateReport(report);
+    } catch (error) {
+      return null;
     }
   }
 
@@ -52,23 +64,56 @@ export class StorageService {
       scoreRange,
       contactRange,
     );
-    const violators: ViolatorEntity[] = [];
-    for (const _violator of violatorsData) {
-      const violator = await this.getViolator(_violator._id);
-      if (violator) {
-        violators.push(violator);
-      }
-    }
-    return violators;
+    return await this.transformViolator(violatorsData);
   }
 
-  async storeReport(report: Report, _violatorIds: string[]) {
+  async getReports(
+    from: number,
+    to?: number,
+    types?: Violation[],
+    entitiesRange?: [number, number],
+    violatorsRange?: [number, number],
+  ) {
+    const reportData = await this.dataService.getReportData(
+      from,
+      to,
+      types,
+      entitiesRange,
+      violatorsRange,
+    );
+    return await Promise.all(
+      reportData.map(async (report) => await this.populateReport(report)),
+    );
+  }
+
+  async transformViolator(
+    violators: Violator[] | ViolatorEntity[] | Types.ObjectId[] | string[],
+  ) {
+    const transformedViolators: ViolatorEntity[] = [];
+
+    for (const _violator of violators) {
+      const id = typeof _violator == 'object' ? _violator._id : _violator;
+      const violator = await this.getViolator(id.toString());
+      if (violator) {
+        transformedViolators.push(violator);
+      }
+    }
+    return transformedViolators;
+  }
+
+  async populateReport(report: Report) {
+    const violators = [...report.violators] as Types.ObjectId[];
+    const populatedReport: PopulatedReport = JSON.parse(JSON.stringify(report));
+    populatedReport.violators = await this.transformViolator(violators);
+    return populatedReport;
+  }
+
+  async storeReport(report: Report) {
     try {
       const dir = join(__dirname, `reports`);
       if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
       }
-      report['_violators'] = _violatorIds;
       fs.appendFileSync(
         join(dir, `${report._id}.json`),
         JSON.stringify(report),

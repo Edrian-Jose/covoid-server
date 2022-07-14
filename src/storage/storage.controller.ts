@@ -5,23 +5,22 @@ import {
   Get,
   NotFoundException,
   Param,
-  Query,
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 import { GetViolatorsDto } from './dto/get-violators.dto';
-import * as moment from 'moment';
 import { MessageBody } from '@nestjs/websockets';
+import { GetReportsDto } from './dto/get-reports.dto';
 
 @Controller('storage')
 export class StorageController {
   constructor(private storageService: StorageService) {}
   @UseGuards(JwtAuthGuard)
   @Get('/violators/:id')
-  async getViolator(@Param() params: { id: string }) {
+  async getViolator(@Param() { id }: { id: string }) {
     let violator: ViolatorEntity;
     try {
-      violator = await this.storageService.getViolator(params.id);
+      violator = await this.storageService.getViolator(id);
     } catch (error) {
       throw new NotFoundException('Cannot find violator in the storage');
     }
@@ -38,6 +37,25 @@ export class StorageController {
       types,
       scoreRange,
       contactRange,
+    );
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('/reports/:id')
+  async getReport(@Param() { id }: { id: string }) {
+    return await this.storageService.getReport(id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('/reports')
+  async getReports(@MessageBody() body: GetReportsDto) {
+    const { from, to, types, entitiesRange, violatorsRange } = body;
+    return await this.storageService.getReports(
+      from,
+      to,
+      types,
+      entitiesRange,
+      violatorsRange,
     );
   }
 }

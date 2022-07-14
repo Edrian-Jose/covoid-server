@@ -23,6 +23,7 @@ export type Violation = 'NoMask' | 'NoSD';
 export type EntityType = 'Person' | 'Face';
 
 export interface ViolatorEntity {
+  _id?: string;
   id: string;
   type: Violation;
   image: string;
