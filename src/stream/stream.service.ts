@@ -31,6 +31,7 @@ export class StreamService {
   async rediscover() {
     await this.discover();
     this.logger.log(`${this.devices.size} DEVICES(S) ARE CONNNECTED`);
+    this.logger.log(`${this.users.size} USER(S) ARE CONNNECTED`);
   }
 
   async discover(): Promise<DevicesMeta> {

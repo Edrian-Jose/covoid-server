@@ -10,6 +10,7 @@ import { StorageService } from 'src/storage/storage.service';
 import { CountData, FactorData } from './data';
 import { Count, CountDocument } from './count.schema';
 import { Cron } from '@nestjs/schedule';
+import { Server } from 'socket.io';
 
 @Injectable()
 export class DataService {
@@ -20,12 +21,14 @@ export class DataService {
     private storageService: StorageService,
   ) {}
 
-  private violatorsData = new Map<string, DetectionData<ViolatorEntity>>();
-  private countData = new Map<string, CountData>();
-  private meanCountData = new Map<string, CountData>();
+  public violatorsData = new Map<string, DetectionData<ViolatorEntity>>();
+  public countData = new Map<string, CountData>();
+  public meanCountData = new Map<string, CountData>();
+  public server: Server;
 
   @Cron('*/10 * * * *')
   async saveCountData() {
+    this.server.emit('auto:data:mean', await this.getManyMeanCountData([]));
     for (const [id, count] of this.meanCountData) {
       const _count = new this.countModel(count);
       await _count.save();
@@ -73,6 +76,7 @@ export class DataService {
     data[violatorProp] = violators;
 
     if (oldCount == newCount) return;
+    this.server.emit('auto:data:violator', this.violatorsData.get(id));
     this.setCountData(id, type, violators, entities, meanDistance);
     const violatorsIds: string[] = [];
     const _violatorsIds: string[] = [];
@@ -141,6 +145,7 @@ export class DataService {
         ? 'LOW RISK'
         : 'SAFE';
     this.countData.set(id, data);
+    this.server.emit('auto:data:count', this.countData.get(id));
     this.setMeanCountData(id);
     return data;
   }
@@ -173,7 +178,59 @@ export class DataService {
       meanCount.score = (meanCount.score + count.score) / 2;
       this.meanCountData.set(id, meanCount);
     }
-
+    this.server.emit('auto:data:mean', this.countData.get(id));
     return this.meanCountData.get(id);
+  }
+
+  async getManyMeanCountData(ids: string[]): Promise<CountData> {
+    const meanCount = ids.length
+      ? new Map<string, CountData>()
+      : this.meanCountData;
+
+    let mean: CountData | undefined = undefined;
+
+    if (ids.length) {
+      this.meanCountData.forEach((count, id) => {
+        if (ids.includes(id)) meanCount.set(id, count);
+      });
+    }
+
+    meanCount.forEach((count) => {
+      if (!mean) {
+        mean = count;
+        return;
+      }
+      for (const factor in count.factors) {
+        if (Object.prototype.hasOwnProperty.call(count.factors, factor)) {
+          const x: FactorData = count.factors[factor];
+
+          for (let i = 0; i < x.length; i++) {
+            mean.factors[factor][i] += x[i];
+          }
+        }
+      }
+
+      mean.p2p[0] += count.p2p[0];
+      mean.p2p[1] += count.p2p[0];
+      mean.p2p[2] += count.p2p[2];
+      mean.score += count.score;
+    });
+
+    for (const factor in mean.factors) {
+      if (Object.prototype.hasOwnProperty.call(mean.factors, factor)) {
+        const x: FactorData = mean.factors[factor];
+
+        for (let i = 0; i < x.length; i++) {
+          mean.factors[factor][i] /= meanCount.size;
+        }
+      }
+    }
+
+    mean.p2p[0] /= meanCount.size;
+    mean.p2p[1] /= meanCount.size;
+    mean.p2p[2] /= meanCount.size;
+    mean.score /= meanCount.size;
+
+    return mean;
   }
 }

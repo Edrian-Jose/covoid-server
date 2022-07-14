@@ -5,6 +5,8 @@ import { DataService } from './data.service';
 import { Report, ReportSchema } from './report.schema';
 import { Violator, ViolatorSchema } from './violator.schema';
 import { Count, CountSchema } from './count.schema';
+import { DataGateway } from './data.gateway';
+import { AuthModule } from 'src/auth/auth.module';
 
 @Module({
   imports: [
@@ -14,8 +16,9 @@ import { Count, CountSchema } from './count.schema';
     MongooseModule.forFeature([{ name: Report.name, schema: ReportSchema }]),
     MongooseModule.forFeature([{ name: Count.name, schema: CountSchema }]),
     StorageModule,
+    AuthModule,
   ],
-  providers: [DataService],
+  providers: [DataService, DataGateway],
   exports: [DataService],
 })
 export class DataModule {}
