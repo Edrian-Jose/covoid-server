@@ -10,6 +10,9 @@ import {
   NotFoundException,
   BadRequestException,
   Put,
+  Get,
+  Delete,
+  Param,
 } from '@nestjs/common';
 import { AuthService } from 'src/auth/auth.service';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
@@ -34,8 +37,30 @@ export class UsersController {
     if (existingUser) {
       throw new BadRequestException('Email already added');
     }
-    const { email, position } = await this.userService.create(body);
-    return await this.authService.login({ email, position });
+    return await this.userService.create(body);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get()
+  async getUsers(@Request() req) {
+    if (req.user.position !== 'admin') {
+      throw new UnauthorizedException('Not admin');
+    }
+    return await this.userService.find({});
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete('/:id')
+  async deleteUsers(@Param() params, @Request() req) {
+    if (req.user.position !== 'admin') {
+      throw new UnauthorizedException('Not admin');
+    }
+
+    const user = await this.userService.delete(params.id);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    return user;
   }
 
   @Post('/create')
@@ -51,28 +76,27 @@ export class UsersController {
       throw new BadRequestException(`${body.email} is already registered`);
     }
     body._id = user._id;
-    const { email, name, position } = await this.userService.update({
+    const { email, name, position, _id } = await this.userService.update({
       ...body,
       registeredAt: Date.now(),
     });
 
-    return await this.authService.login({ email, name, position });
+    return await this.authService.login({ email, name, position, _id });
   }
 
   @UseGuards(JwtAuthGuard)
-  @Put('/update')
+  @Put()
   async updateUser(@Body() userBody: UpdateUserDto, @Request() req) {
-    const user = await this.userService.findById(userBody._id);
+    const user = await this.userService.findByEmail(req.user.email);
     if (!user) {
       throw new NotFoundException('User is not registered');
     }
+    userBody._id ||= user._id;
 
-    if (req.user.email !== user.email) {
-      throw new UnauthorizedException('You cannot change other users info');
-    }
+    const { email, name, position, _id } = await this.userService.update(
+      userBody,
+    );
 
-    const { email, name, position } = await this.userService.update(userBody);
-
-    return await this.authService.login({ email, name, position });
+    return await this.authService.login({ email, name, position, _id });
   }
 }

@@ -10,12 +10,12 @@ import * as bcrypt from 'bcrypt';
 export class UsersService {
   constructor(@InjectModel(User.name) private userModel: Model<UserDocument>) {}
 
-  async create(createUserDto: CreateUserDto): Promise<User> {
+  async create(createUserDto: CreateUserDto): Promise<UserDocument> {
     const createdUser = new this.userModel(createUserDto);
     return createdUser.save();
   }
 
-  async update(updateUserDto: UpdateUserDto): Promise<User> {
+  async update(updateUserDto: UpdateUserDto): Promise<UserDocument> {
     if (updateUserDto.password) {
       updateUserDto.password = await bcrypt.hash(updateUserDto.password, 12);
     }
@@ -27,19 +27,19 @@ export class UsersService {
     );
   }
 
-  async delete(_id: string): Promise<User> {
-    return await this.userModel.remove(_id);
+  async delete(_id: string): Promise<UserDocument> {
+    return await this.userModel.findByIdAndRemove(_id).exec();
   }
 
-  async find(user: FindUserDto): Promise<User[]> {
+  async find(user: FindUserDto): Promise<UserDocument[]> {
     return await this.userModel.find(user).exec();
   }
 
-  async findByEmail(email: string): Promise<User> {
+  async findByEmail(email: string): Promise<UserDocument> {
     return (await this.find({ email }))[0];
   }
 
-  async findById(id: string): Promise<User> {
+  async findById(id: string): Promise<UserDocument> {
     return await this.userModel.findById(id).exec();
   }
 }

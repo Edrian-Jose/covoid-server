@@ -25,6 +25,7 @@ export class AuthService {
         return null;
       }
       return {
+        _id: user._id.toString(),
         email: user.email,
         name: user.name,
         position: user.position,
