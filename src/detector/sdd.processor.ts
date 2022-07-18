@@ -13,12 +13,7 @@ export default async function (job: Job, cb: DoneCallback) {
   const detectedPersons = new Map<string, DetectedPerson>();
   const violators = new Map<string, ViolatorEntity>();
   let defaultDistance = 0;
-  const blankData = {
-    persons: {},
-    violators: {},
-    id: job.data.id,
-    meanDistance: 0,
-  };
+
   try {
     if (!model) {
       tf.getBackend();
@@ -44,6 +39,16 @@ export default async function (job: Job, cb: DoneCallback) {
     } else {
       cb(new Error('No image or stream url provided'), job.data);
     }
+
+    const blankData = {
+      request: job.data.request ?? false,
+      persons: {},
+      violators: {},
+      id: job.data.id,
+      meanDistance: 0,
+      image: buffer.toString('base64'),
+      time: job.data.id,
+    };
 
     const imgTensor = tf.tidy(() => tf.node.decodeImage(buffer, 3));
     const detections = await model.detect(imgTensor as tf.Tensor3D);
@@ -133,12 +138,15 @@ export default async function (job: Job, cb: DoneCallback) {
     }
 
     cb(null, {
+      request: job.data.request ?? false,
       persons: Object.fromEntries(detectedPersons.entries()),
       violators: Object.fromEntries(violators.entries()),
       id: job.data.id,
       meanDistance:
         distances.reduce((a, b) => a + b, 0) / distances.length ||
         defaultDistance,
+      image: blankData.image,
+      time: job.data.time,
     });
   } catch (error) {
     console.log(error);

@@ -1,7 +1,7 @@
 import { Report, ReportDocument } from './report.schema';
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { FilterQuery, Model, Types } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { DeviceMeta, Violation, ViolatorEntity } from 'src/stream/stream';
 import { Violator, ViolatorDocument } from './violator.schema';
 import { DetectionData } from 'src/detector/detector';
@@ -78,7 +78,10 @@ export class DataService {
     data[violatorProp] = violators;
 
     if (oldCount == newCount) return;
-    this.server.emit('auto:data:violator', this.violatorsData.get(id));
+    this.server.emit('auto:data:violator', {
+      id,
+      data: this.violatorsData.get(id),
+    });
     this.setCountData(id, type, violators, entities, meanDistance);
     const violatorsIds: string[] = [];
     const _violatorsIds: Types.ObjectId[] = [];
@@ -112,7 +115,7 @@ export class DataService {
     _report.save();
     this.server.emit(
       'auto:data:report',
-      this.storageService.populateReport(_report),
+      await this.storageService.populateReport(_report),
     );
     this.storageService.storeReport(report);
   }

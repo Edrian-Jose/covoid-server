@@ -13,12 +13,6 @@ const capturers = new Map<string, cv.VideoCapture>();
 export default async function (job: Job, cb: DoneCallback) {
   const detectedFaces = new Map<string, DetectedFace>();
   const violators = new Map<string, ViolatorEntity>();
-  const blankData = {
-    faces: {},
-    violators: {},
-    time: job.data.time,
-    id: job.data.id,
-  };
 
   try {
     if (!faceModel) {
@@ -51,6 +45,15 @@ export default async function (job: Job, cb: DoneCallback) {
     } else {
       cb(new Error('No image or stream url provided'), job.data);
     }
+
+    const blankData = {
+      request: job.data.request ?? false,
+      faces: {},
+      violators: {},
+      time: job.data.time,
+      id: job.data.id,
+      image: buffer.toString('base64'),
+    };
 
     const imgTensor = tf.tidy(() => tf.node.decodeImage(buffer, 3));
     const detections = await faceModel.estimateFaces(imgTensor as tf.Tensor3D);
@@ -125,10 +128,12 @@ export default async function (job: Job, cb: DoneCallback) {
       resizedFace.release();
       result.dispose();
       cb(null, {
+        request: job.data.request ?? false,
         faces: Object.fromEntries(detectedFaces.entries()),
         violators: Object.fromEntries(violators.entries()),
         time: job.data.time,
         id: job.data.id,
+        image: blankData.image,
       });
     });
   } catch (error) {

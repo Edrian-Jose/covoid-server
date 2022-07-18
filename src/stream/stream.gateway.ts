@@ -87,6 +87,7 @@ export class StreamGateway
     }
     const rtData = await this.streamService.connect(data.id, client.id);
     if (rtData) {
+      this.logger.log(`${client.id} joined ${rtData._id}`);
       client.join(rtData._id);
     }
 

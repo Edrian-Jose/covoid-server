@@ -32,6 +32,7 @@
     "@nestjs/platform-express": "^8.0.0",
     "@nestjs/platform-socket.io": "^8.4.7",
     "@nestjs/schedule": "^2.0.1",
+    "@nestjs/serve-static": "^3.0.0",
     "@nestjs/websockets": "^8.4.7",
     "@tensorflow-models/blazeface": "^0.0.7",
     "@tensorflow-models/coco-ssd": "^2.2.2",

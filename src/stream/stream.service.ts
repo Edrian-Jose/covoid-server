@@ -120,9 +120,7 @@ export class StreamService {
         const meta = this.devicesMeta.get(id);
         meta.lastFrame = lastFrame;
       }
-      if (!this.devices.has(id)) {
-        this.dataService.addMonitoringData(this.devicesMeta.get(id));
-      }
+      this.dataService.addMonitoringData(this.devicesMeta.get(id));
     }
 
     return this.devicesMeta;

@@ -6,6 +6,8 @@ import { DataService } from 'src/data/data.service';
 import { StreamService } from 'src/stream/stream.service';
 import { DetectionData, DetectionState } from './detector';
 import { createEmptyDetectionData } from './detector.provider';
+import { Server } from 'socket.io';
+import * as moment from 'moment';
 
 @Injectable()
 export class DetectorService {
@@ -13,7 +15,7 @@ export class DetectorService {
 
   private readonly logger = new Logger(DetectorService.name);
   private detectionState: DetectionState = 'IDLE';
-
+  public server: Server;
   constructor(
     @InjectQueue('sdd') private sddQueue: Queue,
     @InjectQueue('fmd') private fmdQueue: Queue,
@@ -50,13 +52,30 @@ export class DetectorService {
       if (isCompleted) {
         this.jobs.sdd.shift();
         if (job.returnvalue) {
-          this.dataService.setViolatorsData(
+          if (job.returnvalue.violators && job.returnvalue.violators.length) {
+            this.dataService.setViolatorsData(
+              job.returnvalue.id,
+              'NoSD',
+              Object.values(job.returnvalue.violators),
+              Object.keys(job.returnvalue.persons),
+              job.returnvalue.meanDistance,
+            );
+          }
+          const watchers = this.streamService.deviceWathers.has(
             job.returnvalue.id,
-            'NoSD',
-            Object.values(job.returnvalue.violators),
-            Object.keys(job.returnvalue.persons),
-            job.returnvalue.meanDistance,
-          );
+          )
+            ? this.streamService.deviceWathers.get(job.returnvalue.id)
+            : [];
+          if (watchers.length || job.returnvalue.request) {
+            this.server.to(job.returnvalue.id).emit(`stream:violators:nosd`, {
+              id: job.returnvalue.id,
+              type: 'NoSD',
+              violators: job.returnvalue.violators,
+              persons: job.returnvalue.persons,
+              meanDistance: job.returnvalue.meanDistance,
+              image: job.returnvalue.image,
+            });
+          }
         }
         job.remove();
       }
@@ -89,8 +108,9 @@ export class DetectorService {
       }
       const newJob = await this.sddQueue.add({
         id,
-        time: new Date().getMilliseconds(),
+        time: moment().valueOf(),
         img: data,
+        request: false,
         calibration: {
           focalLength: meta.focalLength,
           shoulderLength: meta.shoulderLength,
@@ -120,12 +140,28 @@ export class DetectorService {
       if (isCompleted) {
         this.jobs.fmd.shift();
         if (job.returnvalue) {
-          this.dataService.setViolatorsData(
+          if (job.returnvalue.violators && job.returnvalue.violators.length) {
+            this.dataService.setViolatorsData(
+              job.returnvalue.id,
+              'NoMask',
+              Object.values(job.returnvalue.violators),
+              Object.keys(job.returnvalue.faces),
+            );
+          }
+          const watchers = this.streamService.deviceWathers.has(
             job.returnvalue.id,
-            'NoMask',
-            Object.values(job.returnvalue.violators),
-            Object.keys(job.returnvalue.faces),
-          );
+          )
+            ? this.streamService.deviceWathers.get(job.returnvalue.id)
+            : [];
+          if (watchers.length || job.returnvalue.request) {
+            this.server.to(job.returnvalue.id).emit(`stream:violators:nomask`, {
+              id: job.returnvalue.id,
+              type: 'NoMask',
+              violators: job.returnvalue.violators,
+              faces: job.returnvalue.faces,
+              image: job.returnvalue.image,
+            });
+          }
         }
 
         job.remove();
@@ -157,11 +193,44 @@ export class DetectorService {
         continue;
       }
       const newJob = await this.fmdQueue.add({
-        time: new Date().toLocaleTimeString(),
+        time: moment().valueOf(),
         img: data,
         id,
+        request: false,
       });
       this.jobs.fmd.push(newJob.id);
     }
+  }
+
+  async detectFrame(
+    id: string,
+    data: string,
+    calibration: {
+      focalLength: number;
+      shoulderLength: number;
+      threshold: number;
+    },
+  ) {
+    const newFmdJob = await this.fmdQueue.add({
+      time: moment().valueOf(),
+      img: data,
+      id,
+      request: true,
+    });
+
+    const newSddJob = await this.sddQueue.add({
+      id,
+      time: moment().valueOf(),
+      img: data,
+      request: true,
+      calibration: {
+        focalLength: calibration.focalLength,
+        shoulderLength: calibration.shoulderLength,
+        threshold: calibration.threshold,
+      },
+    });
+
+    this.jobs.sdd.push(newSddJob.id);
+    this.jobs.fmd.push(newFmdJob.id);
   }
 }
