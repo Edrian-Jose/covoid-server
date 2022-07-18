@@ -5,6 +5,7 @@ import { DetectorGateway } from './detector.gateway';
 import { BullModule } from '@nestjs/bull';
 import { join } from 'path';
 import { DataModule } from 'src/data/data.module';
+import { AuthModule } from 'src/auth/auth.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { DataModule } from 'src/data/data.module';
     }),
     StreamModule,
     DataModule,
+    AuthModule,
   ],
   providers: [DetectorService, DetectorGateway],
 })
