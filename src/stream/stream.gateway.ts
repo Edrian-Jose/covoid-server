@@ -18,7 +18,7 @@ import { StreamService } from './stream.service';
 import { JwtService } from '@nestjs/jwt';
 import { CalibrateCameraDto } from './dto/calibrate-camera.dto';
 
-@WebSocketGateway()
+@WebSocketGateway({ cors: true })
 export class StreamGateway
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
 {
@@ -62,6 +62,7 @@ export class StreamGateway
           clientId: client.id,
         });
       }
+      return this.streamService.users.get(client.id);
     } catch (error) {
       throw new WsException('Invalid authentication');
     }

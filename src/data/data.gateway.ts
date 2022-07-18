@@ -11,7 +11,7 @@ import { DataService } from './data.service';
 import { GetDataDto } from './dto/get-data.dto';
 import { GetMeanDataDto } from './dto/get-mean-data.dto';
 
-@WebSocketGateway()
+@WebSocketGateway({ cors: true })
 export class DataGateway implements OnGatewayInit {
   constructor(private dataService: DataService) {}
   afterInit(server: any) {
