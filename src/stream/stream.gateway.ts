@@ -59,7 +59,9 @@ export class StreamGateway
           clientId: client.id,
         });
       }
-      return Object.fromEntries(this.streamService.devicesMeta.entries());
+      this.logger.log(
+        `${this.streamService.users.size} USER(S) ARE CONNNECTED`,
+      );
     } catch (error) {
       throw new WsException('Invalid authentication');
     }
@@ -68,11 +70,10 @@ export class StreamGateway
   async handleDisconnect(@ConnectedSocket() client: Socket) {
     if (this.streamService.clientsDevice.has(client.id)) {
       const deviceId = this.streamService.clientsDevice.get(client.id);
-      const meta = await this.streamService.disconnect(deviceId, client.id);
-      this.streamService.users.delete(client.id);
-      return meta;
+      await this.streamService.disconnect(deviceId, client.id);
     }
-    return null;
+    this.streamService.users.delete(client.id);
+    this.logger.log(`${this.streamService.users.size} USER(S) ARE CONNNECTED`);
   }
 
   @UseGuards(WsGuard)
@@ -129,7 +130,13 @@ export class StreamGateway
     this.logger.log(
       `${this.streamService.devices.size} DEVICES(S) ARE CONNNECTED`,
     );
-    return devicesMeta;
+    return Object.fromEntries(devicesMeta.entries());
+  }
+
+  @UseGuards(WsGuard)
+  @SubscribeMessage('stream:devices:meta')
+  async handleGetDevicesMeta() {
+    return Object.fromEntries(this.streamService.devicesMeta.entries());
   }
 
   @UseGuards(WsGuard)

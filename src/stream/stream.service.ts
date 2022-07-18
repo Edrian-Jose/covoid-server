@@ -61,7 +61,7 @@ export class StreamService {
           deviceConfig.pass = password;
         }
       }
-      const odevice = new OnvifDevice(deviceConfig);
+      let odevice = new OnvifDevice(deviceConfig);
 
       if (camera.needAuth) {
         const { login, password } = camera;
@@ -70,10 +70,12 @@ export class StreamService {
         }
       }
 
-      if (this.devices.has(id)) {
-        continue;
+      if (!this.devices.has(id)) {
+        await odevice.init();
+      } else {
+        odevice = this.devices.get(id);
       }
-      await odevice.init();
+
       let lastFrame = 'none';
       const url = odevice.getUdpStreamUrl();
       let hasError = false;
@@ -98,7 +100,7 @@ export class StreamService {
         hasError = true;
         this.logger.error(error);
       } finally {
-        if (!hasError) {
+        if (!hasError && !this.devices.has(id)) {
           this.devices.set(id, odevice);
         }
       }
@@ -114,8 +116,13 @@ export class StreamService {
           xaddr: probe.xaddrs[0],
         };
         this.devicesMeta.set(id, meta);
+      } else {
+        const meta = this.devicesMeta.get(id);
+        meta.lastFrame = lastFrame;
       }
-      this.dataService.addMonitoringData(this.devicesMeta.get(id));
+      if (!this.devices.has(id)) {
+        this.dataService.addMonitoringData(this.devicesMeta.get(id));
+      }
     }
 
     return this.devicesMeta;
