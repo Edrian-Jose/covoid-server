@@ -31,8 +31,15 @@ export class UsersService {
     return await this.userModel.findByIdAndRemove(_id).exec();
   }
 
-  async find(user: FindUserDto): Promise<UserDocument[]> {
-    return await this.userModel.find(user).exec();
+  async find(
+    user: FindUserDto,
+    securePassword = true,
+  ): Promise<UserDocument[]> {
+    let query = this.userModel.find(user);
+    if (!securePassword) {
+      query = query.select('+password');
+    }
+    return await query.exec();
   }
 
   async findByEmail(email: string): Promise<UserDocument> {

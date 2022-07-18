@@ -1,17 +1,17 @@
 import { Report, ReportDocument } from './report.schema';
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { FilterQuery, Model, Types } from 'mongoose';
 import { DeviceMeta, Violation, ViolatorEntity } from 'src/stream/stream';
 import { Violator, ViolatorDocument } from './violator.schema';
 import { DetectionData } from 'src/detector/detector';
 import { createEmptyDetectionData } from 'src/detector/detector.provider';
 import { StorageService } from 'src/storage/storage.service';
-import { CountData, FactorData } from './data';
 import { Count, CountDocument } from './count.schema';
 import { Cron } from '@nestjs/schedule';
 import { Server } from 'socket.io';
 import * as moment from 'moment';
+import { CountData, CountRiskLabel, FactorData } from './data';
 
 @Injectable()
 export class DataService {
@@ -47,7 +47,7 @@ export class DataService {
       const threshold = meta.threshold || 1;
       this.countData.set(id, {
         cameraId: meta._id,
-        label: 'UNKNOWN',
+        label: CountRiskLabel.UNKNOWN,
         name: meta.name,
         p2p: [threshold, threshold, 1],
         score: 0,
@@ -196,21 +196,64 @@ export class DataService {
         ) / 100 || 0;
     }
 
+    const riskFactor =
+      data.factors._p2p[2] > 0.5 ||
+      data.factors.sdv[2] > 0.5 ||
+      data.factors.fmv[2] > 0.5;
     const score =
       (data.factors._p2p[2] + data.factors.sdv[2] + data.factors.fmv[2]) / 3;
     data.score = Math.round((score + Number.EPSILON) * 100) / 100 || 0;
+    const oldLabel = data.label;
     data.label =
       data.score > 0.5
-        ? 'DANGER'
+        ? CountRiskLabel.DANGER
+        : riskFactor
+        ? CountRiskLabel.HIGH
         : data.score > 0.3
-        ? 'WARNING'
-        : data.score > 10
-        ? 'LOW RISK'
-        : 'SAFE';
+        ? CountRiskLabel.MODERATE
+        : data.score > 0.1
+        ? CountRiskLabel.LOW
+        : CountRiskLabel.SAFE;
     this.countData.set(id, data);
     this.server.emit('auto:data:count', this.countData.get(id));
     this.setMeanCountData(id);
+
+    if (oldLabel !== data.label) {
+      this.sendNotification(id);
+    }
     return data;
+  }
+
+  async sendNotification(id: string) {
+    const data = this.countData.get(id);
+    const riskLabel =
+      data.label !== CountRiskLabel.SAFE ? `${data.label} RISK` : data.label;
+    const message = `${data.name} location is at ${riskLabel}`;
+    const count = new this.countModel({ ...data, notifMessage: message });
+    const _count = await count.save();
+    this.server.emit('auto:notif', {
+      message,
+      _count,
+    });
+  }
+
+  async getNotifications(queryData?: number | string) {
+    const data = queryData ? queryData : moment().subtract(1, 'd').valueOf();
+    if (typeof data === 'number') {
+      await this.countModel
+        .find({
+          created_at: {
+            $gte: moment(data),
+          },
+        })
+        .exec();
+    } else {
+      await this.countModel
+        .find({
+          _id: data,
+        })
+        .exec();
+    }
   }
 
   async setMeanCountData(id: string) {
@@ -241,7 +284,7 @@ export class DataService {
       meanCount.score = (meanCount.score + count.score) / 2;
       this.meanCountData.set(id, meanCount);
     }
-    this.server.emit('auto:data:mean', this.countData.get(id));
+    this.server.emit('auto:data:mean', this.meanCountData.get(id));
     return this.meanCountData.get(id);
   }
 

@@ -18,7 +18,7 @@ export class AuthService {
     pass: string,
     isAdmin = false,
   ): Promise<any> {
-    const user: User = await this.userService.findByEmail(email);
+    const user: User = (await this.userService.find({ email }, false))[0];
 
     if (user && user.password && (await bcrypt.compare(pass, user.password))) {
       if (isAdmin && user.position !== 'admin') {

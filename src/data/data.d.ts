@@ -1,11 +1,18 @@
-import { FactorData } from './data.d';
 export type FactorData = [number, number, number];
 
+export enum CountRiskLabel {
+  UNKNOWN,
+  SAFE,
+  LOW,
+  MODERATE,
+  HIGH,
+  DANGER,
+}
 export interface CountData {
   cameraId: string;
   name: string;
   score: number;
-  label: 'SAFE' | 'LOW RISK' | 'WARNING' | 'DANGER' | 'UNKNOWN';
+  label: CountRiskLabel;
   p2p: FactorData;
   factors: {
     _p2p: FactorData;

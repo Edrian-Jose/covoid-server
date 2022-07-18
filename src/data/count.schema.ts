@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
-import { CountData, FactorData } from './data';
+import { CountData, FactorData, CountRiskLabel } from './data';
 
 export type CountDocument = Count & Document;
 
@@ -12,8 +12,8 @@ export class Count implements CountData {
   @Prop({ required: true })
   score: number;
 
-  @Prop({ required: true })
-  label: 'SAFE' | 'LOW RISK' | 'WARNING' | 'DANGER' | 'UNKNOWN';
+  @Prop({ required: true, type: Number })
+  label: CountRiskLabel;
 
   @Prop({ required: true, type: [Number] })
   p2p: FactorData;
@@ -26,6 +26,9 @@ export class Count implements CountData {
 
   @Prop({ required: true })
   cameraId: string;
+
+  @Prop()
+  notifMessage?: string;
 }
 
 export const CountSchema = SchemaFactory.createForClass(Count);

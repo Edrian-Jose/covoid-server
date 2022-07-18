@@ -50,7 +50,7 @@ export class DataGateway implements OnGatewayInit {
 
   @UseGuards(WsGuard)
   @SubscribeMessage('data:means')
-  getMeanCountsData() {
+  getNotifications() {
     return Object.fromEntries(this.dataService.meanCountData.entries());
   }
 
@@ -61,5 +61,17 @@ export class DataGateway implements OnGatewayInit {
       throw new WsException('No violators yet');
     }
     return this.dataService.getManyMeanCountData(id || []);
+  }
+
+  @UseGuards(WsGuard)
+  @SubscribeMessage('data:notifs')
+  getNotifs() {
+    return this.dataService.getNotifications();
+  }
+
+  @UseGuards(WsGuard)
+  @SubscribeMessage('data:notif')
+  getNotif(@MessageBody() { id }: GetDataDto) {
+    return this.dataService.getNotifications(id);
   }
 }
