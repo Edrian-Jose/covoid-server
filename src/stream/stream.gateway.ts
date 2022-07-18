@@ -33,14 +33,11 @@ export class StreamGateway
 
   async afterInit(server: Server) {
     this.streamService.socket = server;
-    // try {
-
-    // } catch (error) {
-    //   console.log(error);
-
-    //   this.logger.error('Initial discovery failed');
-    // }
-    await this.streamService.discover();
+    try {
+      await this.streamService.discover();
+    } catch (error) {
+      this.logger.error('Initial discovery failed');
+    }
     this.logger.log(
       `${this.streamService.devices.size} DEVICES(S) ARE CONNNECTED`,
     );
@@ -62,7 +59,7 @@ export class StreamGateway
           clientId: client.id,
         });
       }
-      return this.streamService.users.get(client.id);
+      return Object.fromEntries(this.streamService.devicesMeta.entries());
     } catch (error) {
       throw new WsException('Invalid authentication');
     }
@@ -71,9 +68,11 @@ export class StreamGateway
   async handleDisconnect(@ConnectedSocket() client: Socket) {
     if (this.streamService.clientsDevice.has(client.id)) {
       const deviceId = this.streamService.clientsDevice.get(client.id);
-      await this.streamService.disconnect(deviceId, client.id);
+      const meta = await this.streamService.disconnect(deviceId, client.id);
       this.streamService.users.delete(client.id);
+      return meta;
     }
+    return null;
   }
 
   @UseGuards(WsGuard)
@@ -126,10 +125,11 @@ export class StreamGateway
   @UseGuards(WsGuard)
   @SubscribeMessage('stream:refresh')
   async handleStreamRefresh() {
-    await this.streamService.refresh();
+    const devicesMeta = await this.streamService.refresh();
     this.logger.log(
       `${this.streamService.devices.size} DEVICES(S) ARE CONNNECTED`,
     );
+    return devicesMeta;
   }
 
   @UseGuards(WsGuard)
@@ -142,6 +142,6 @@ export class StreamGateway
       throw new WsException("Camera doesn't exist");
     }
 
-    await this.streamService.disconnect(data.id, client.id);
+    return await this.streamService.disconnect(data.id, client.id);
   }
 }

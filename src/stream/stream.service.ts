@@ -170,7 +170,7 @@ export class StreamService {
       }
     }
 
-    await this.discover();
+    return await this.discover();
   }
 
   async check(id: string) {
