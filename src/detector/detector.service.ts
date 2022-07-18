@@ -51,15 +51,14 @@ export class DetectorService {
       if (isCompleted) {
         this.jobs.sdd.shift();
         if (job.returnvalue) {
-          if (job.returnvalue.violators && job.returnvalue.violators.length) {
-            this.dataService.setViolatorsData(
-              job.returnvalue.id,
-              'NoSD',
-              Object.values(job.returnvalue.violators),
-              Object.keys(job.returnvalue.persons),
-              job.returnvalue.meanDistance,
-            );
-          }
+          this.dataService.setViolatorsData(
+            job.returnvalue.id,
+            'NoSD',
+            Object.values(job.returnvalue.violators),
+            Object.keys(job.returnvalue.persons),
+            job.returnvalue.meanDistance,
+          );
+
           const watchers = this.streamService.deviceWathers.has(
             job.returnvalue.id,
           )
@@ -140,14 +139,13 @@ export class DetectorService {
       if (isCompleted) {
         this.jobs.fmd.shift();
         if (job.returnvalue) {
-          if (job.returnvalue.violators && job.returnvalue.violators.length) {
-            this.dataService.setViolatorsData(
-              job.returnvalue.id,
-              'NoMask',
-              Object.values(job.returnvalue.violators),
-              Object.keys(job.returnvalue.faces),
-            );
-          }
+          this.dataService.setViolatorsData(
+            job.returnvalue.id,
+            'NoMask',
+            Object.values(job.returnvalue.violators),
+            Object.keys(job.returnvalue.faces),
+          );
+
           const watchers = this.streamService.deviceWathers.has(
             job.returnvalue.id,
           )

@@ -108,10 +108,10 @@ export default async function (job: Job, cb: DoneCallback) {
         id,
         label,
         bbox: [
-          topX,
-          topY - topY * 0.3,
-          botX - topX,
-          botY - topY + (botY - topY) * 0.5,
+          topX / img.cols,
+          (topY - topY * 0.3) / img.rows,
+          (botX - topX) / img.cols,
+          (botY - topY + (botY - topY) * 0.5) / img.rows,
         ],
       });
       if (withoutMask >= mask && withoutMask > 0.7) {

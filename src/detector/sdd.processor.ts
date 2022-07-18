@@ -136,10 +136,20 @@ export default async function (job: Job, cb: DoneCallback) {
         }
       }
     }
+    const newDetectedPersons = new Map<string, DetectedPerson>();
+    detectedPersons.forEach((person, id) => {
+      person.bbox = [
+        person.bbox[0] / img.cols,
+        person.bbox[1] / img.rows,
+        person.bbox[2] / img.cols,
+        person.bbox[3] / img.rows,
+      ];
+      newDetectedPersons.set(id, person);
+    });
 
     cb(null, {
       request: job.data.request ?? false,
-      persons: Object.fromEntries(detectedPersons.entries()),
+      persons: Object.fromEntries(newDetectedPersons.entries()),
       violators: Object.fromEntries(violators.entries()),
       id: job.data.id,
       meanDistance:
