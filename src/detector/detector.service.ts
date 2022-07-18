@@ -12,7 +12,6 @@ import * as moment from 'moment';
 @Injectable()
 export class DetectorService {
   public jobs: DetectionData<JobId> = createEmptyDetectionData<JobId>();
-
   private readonly logger = new Logger(DetectorService.name);
   private detectionState: DetectionState = 'IDLE';
   public server: Server;
@@ -74,6 +73,7 @@ export class DetectorService {
               persons: job.returnvalue.persons,
               meanDistance: job.returnvalue.meanDistance,
               image: job.returnvalue.image,
+              time: job.returnvalue.time,
             });
           }
         }
@@ -160,6 +160,7 @@ export class DetectorService {
               violators: job.returnvalue.violators,
               faces: job.returnvalue.faces,
               image: job.returnvalue.image,
+              time: job.returnvalue.time,
             });
           }
         }
