@@ -114,10 +114,10 @@ export class DataService {
 
     const _report = new this.reportModel(report);
     report._id = _report._id;
-    _report.save();
+    const reportDoc = await _report.save();
     this.server.emit(
       'auto:data:report',
-      await this.storageService.populateReport(_report),
+      await this.storageService.populateReport(reportDoc),
     );
     this.storageService.storeReport(report);
   }
@@ -234,7 +234,7 @@ export class DataService {
     const riskLabel =
       data.label !== CountRiskLabel.SAFE
         ? `${CountRiskLabel[data.label]} RISK`
-        : data.label;
+        : CountRiskLabel[data.label];
     const message = `${data.name} location is at ${riskLabel}`;
     const count = new this.countModel({ ...data, notifMessage: message });
     const _count = await count.save();
