@@ -98,8 +98,10 @@ export class DataService {
       _violator.save();
       await this.storageService.storeViolator(_violator._id, violator);
     }
+    const name = this.countData.get(id).name;
     const report: Report = {
       cameraId: id,
+      cameraName: name,
       entities,
       type,
       violators: _violatorsIds,
@@ -129,7 +131,7 @@ export class DataService {
   ) {
     return await this.violatorModel
       .find({
-        created_at: {
+        createdAt: {
           $gte: moment(from),
           $lte: moment(to),
         },
@@ -156,7 +158,7 @@ export class DataService {
   ) {
     return await this.reportModel
       .find({
-        created_at: {
+        createdAt: {
           $gte: moment(from),
           $lte: moment(to),
         },
@@ -230,7 +232,9 @@ export class DataService {
   async sendNotification(id: string) {
     const data = this.countData.get(id);
     const riskLabel =
-      data.label !== CountRiskLabel.SAFE ? `${data.label} RISK` : data.label;
+      data.label !== CountRiskLabel.SAFE
+        ? `${CountRiskLabel[data.label]} RISK`
+        : data.label;
     const message = `${data.name} location is at ${riskLabel}`;
     const count = new this.countModel({ ...data, notifMessage: message });
     const _count = await count.save();
@@ -245,7 +249,7 @@ export class DataService {
     if (typeof data === 'number') {
       await this.countModel
         .find({
-          created_at: {
+          createdAt: {
             $gte: moment(data),
           },
         })

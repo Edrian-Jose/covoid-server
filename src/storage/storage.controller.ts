@@ -5,6 +5,7 @@ import {
   Get,
   NotFoundException,
   Param,
+  Post,
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
@@ -28,7 +29,7 @@ export class StorageController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Get('/violators')
+  @Post('/violators')
   async getViolators(@MessageBody() body: GetViolatorsDto) {
     const { from, to, types, scoreRange, contactRange } = body;
     return await this.storageService.getViolators(
@@ -47,7 +48,7 @@ export class StorageController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Get('/reports')
+  @Post('/reports')
   async getReports(@MessageBody() body: GetReportsDto) {
     const { from, to, types, entitiesRange, violatorsRange } = body;
     return await this.storageService.getReports(

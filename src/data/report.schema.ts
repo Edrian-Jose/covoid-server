@@ -14,6 +14,9 @@ export class Report {
   cameraId: Camera['_id'];
 
   @Prop({ required: true, type: String })
+  cameraName: Camera['name'];
+
+  @Prop({ required: true, type: String })
   type: Violation;
 
   @Prop({ required: true, type: [String] })
