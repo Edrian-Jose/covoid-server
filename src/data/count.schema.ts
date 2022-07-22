@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
+import { DetectionData } from 'src/detector/detector';
 import { CountData, FactorData, CountRiskLabel } from './data';
 
 export type CountDocument = Count & Document;
@@ -29,6 +30,11 @@ export class Count implements CountData {
 
   @Prop()
   notifMessage?: string;
+
+  @Prop({
+    type: { fmd: Array<string>, sdd: Array<string> },
+  })
+  violators?: DetectionData<string>;
 }
 
 export const CountSchema = SchemaFactory.createForClass(Count);

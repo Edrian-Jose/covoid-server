@@ -67,6 +67,10 @@ export class StorageService {
     return await this.transformViolator(violatorsData);
   }
 
+  async getViolatorsByIds(ids: string[]) {
+    return await this.transformViolator(ids);
+  }
+
   async getReports(
     from: number,
     to?: number,

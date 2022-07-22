@@ -19,6 +19,7 @@ export class DataService {
     @InjectModel(Violator.name) private violatorModel: Model<ViolatorDocument>,
     @InjectModel(Report.name) private reportModel: Model<ReportDocument>,
     @InjectModel(Count.name) private countModel: Model<CountDocument>,
+    @InjectModel('MeanCount') private meanCountModel: Model<CountDocument>,
     @Inject(forwardRef(() => StorageService))
     private storageService: StorageService,
   ) {}
@@ -32,7 +33,7 @@ export class DataService {
   async saveCountData() {
     this.server.emit('auto:data:mean', await this.getManyMeanCountData([]));
     for (const [id, count] of this.meanCountData) {
-      const _count = new this.countModel(count);
+      const _count = new this.meanCountModel(count);
       await _count.save();
       this.meanCountData.delete(id);
     }
@@ -82,9 +83,10 @@ export class DataService {
       id,
       data: this.violatorsData.get(id),
     });
-    this.setCountData(id, type, violators, entities, meanDistance);
+
     const violatorsIds: string[] = [];
     const _violatorsIds: Types.ObjectId[] = [];
+    const violatorsWithDocId: ViolatorEntity[] = [];
     for (const violator of violators) {
       const _violator = new this.violatorModel({
         entityId: violator.id,
@@ -95,9 +97,13 @@ export class DataService {
       });
       violatorsIds.push(_violator.entityId);
       _violatorsIds.push(_violator._id);
+      violator._id = _violator._id;
+      violatorsWithDocId.push(violator);
       _violator.save();
       await this.storageService.storeViolator(_violator._id, violator);
     }
+    data[violatorProp] = violatorsWithDocId;
+    this.setCountData(id, type, violators, entities, meanDistance);
     const name = this.countData.get(id).name;
     const report: Report = {
       cameraId: id,
@@ -115,10 +121,7 @@ export class DataService {
     const _report = new this.reportModel(report);
     report._id = _report._id;
     const reportDoc = await _report.save();
-    this.server.emit(
-      'auto:data:report',
-      await this.storageService.populateReport(reportDoc),
-    );
+    this.server.emit('auto:data:report', reportDoc);
     this.storageService.storeReport(report);
   }
 
@@ -202,15 +205,15 @@ export class DataService {
     }
 
     const riskFactor =
-      data.factors._p2p[2] > 0.5 ||
-      data.factors.sdv[2] > 0.5 ||
-      data.factors.fmv[2] > 0.5;
+      (data.factors._p2p[2] > 0.5 && data.factors.sdv[1] > 3) ||
+      (data.factors.sdv[2] > 0.5 && data.factors.sdv[1] > 3) ||
+      (data.factors.fmv[2] > 0.5 && data.factors.fmv[0] > 1);
     const score =
       (data.factors._p2p[2] + data.factors.sdv[2] + data.factors.fmv[2]) / 3;
     data.score = Math.round((score + Number.EPSILON) * 100) / 100 || 0;
     const oldLabel = data.label;
     data.label =
-      data.score > 0.5
+      data.score > 0.5 && riskFactor
         ? CountRiskLabel.DANGER
         : riskFactor
         ? CountRiskLabel.HIGH
@@ -236,7 +239,13 @@ export class DataService {
         ? `${CountRiskLabel[data.label]} RISK`
         : CountRiskLabel[data.label];
     const message = `${data.name} location is at ${riskLabel}`;
-    const count = new this.countModel({ ...data, notifMessage: message });
+    const fmdViolators = this.violatorsData.get(id).fmd.map((v) => v._id);
+    const sddViolators = this.violatorsData.get(id).sdd.map((v) => v._id);
+    const count = new this.countModel({
+      ...data,
+      notifMessage: message,
+      violators: { fmd: fmdViolators, sdd: sddViolators },
+    });
     const _count = await count.save();
     this.server.emit('auto:notif', {
       message,
@@ -245,17 +254,41 @@ export class DataService {
   }
 
   async getNotifications(queryData?: number | string) {
-    const data = queryData ? queryData : moment().subtract(1, 'd').valueOf();
+    const data = queryData ? queryData : 20;
     if (typeof data === 'number') {
-      await this.countModel
+      return await this.countModel
+        .find({
+          notifMessage: { $exists: true },
+          createdAt: {
+            $gte: moment(data),
+          },
+        })
+        .sort('-createdAt')
+        .exec();
+    } else {
+      return await this.countModel
+        .find({
+          _id: data,
+          notifMessage: { $exists: true },
+        })
+        .exec();
+    }
+  }
+
+  async getMeanCounts(queryData?: number | string) {
+    const data = queryData ? queryData : 20;
+    if (typeof data === 'number') {
+      return await this.meanCountModel
         .find({
           createdAt: {
             $gte: moment(data),
           },
         })
+        .sort('-createdAt')
+        .limit(data)
         .exec();
     } else {
-      await this.countModel
+      return await this.countModel
         .find({
           _id: data,
         })

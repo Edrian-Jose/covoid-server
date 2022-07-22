@@ -15,6 +15,7 @@ import { AuthModule } from 'src/auth/auth.module';
     ]),
     MongooseModule.forFeature([{ name: Report.name, schema: ReportSchema }]),
     MongooseModule.forFeature([{ name: Count.name, schema: CountSchema }]),
+    MongooseModule.forFeature([{ name: 'MeanCount', schema: CountSchema }]),
     forwardRef(() => StorageModule),
     AuthModule,
   ],

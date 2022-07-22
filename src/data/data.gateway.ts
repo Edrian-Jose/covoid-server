@@ -6,6 +6,7 @@ import {
   MessageBody,
   WsException,
 } from '@nestjs/websockets';
+import * as moment from 'moment';
 import { WsGuard } from 'src/auth/ws-auth.guard';
 import { DataService } from './data.service';
 import { GetDataDto } from './dto/get-data.dto';
@@ -49,6 +50,12 @@ export class DataGateway implements OnGatewayInit {
   }
 
   @UseGuards(WsGuard)
+  @SubscribeMessage('data:counts:mean')
+  getMeanCountsData(@MessageBody() { data }: { data?: number | string }) {
+    return this.dataService.getMeanCounts(data);
+  }
+
+  @UseGuards(WsGuard)
   @SubscribeMessage('data:means')
   getNotifications() {
     return Object.fromEntries(this.dataService.meanCountData.entries());
@@ -65,8 +72,10 @@ export class DataGateway implements OnGatewayInit {
 
   @UseGuards(WsGuard)
   @SubscribeMessage('data:notifs')
-  getNotifs() {
-    return this.dataService.getNotifications();
+  getNotifs(@MessageBody() { from }: { from?: number }) {
+    return this.dataService.getNotifications(
+      from ?? moment().subtract(3, 'h').valueOf(),
+    );
   }
 
   @UseGuards(WsGuard)

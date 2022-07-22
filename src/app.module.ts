@@ -23,6 +23,7 @@ import { ServeStaticModule } from '@nestjs/serve-static';
   imports: [
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', 'client'),
+      exclude: ['/api*'],
     }),
     ScheduleModule.forRoot(),
     ConfigModule.forRoot({

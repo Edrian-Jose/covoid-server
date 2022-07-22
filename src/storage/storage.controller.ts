@@ -2,7 +2,9 @@ import { ViolatorEntity } from 'src/stream/stream';
 import { StorageService } from './storage.service';
 import {
   Controller,
+  forwardRef,
   Get,
+  Inject,
   NotFoundException,
   Param,
   Post,
@@ -12,10 +14,14 @@ import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 import { GetViolatorsDto } from './dto/get-violators.dto';
 import { MessageBody } from '@nestjs/websockets';
 import { GetReportsDto } from './dto/get-reports.dto';
+import { DataService } from 'src/data/data.service';
 
 @Controller('storage')
 export class StorageController {
-  constructor(private storageService: StorageService) {}
+  constructor(
+    private storageService: StorageService,
+    @Inject(forwardRef(() => DataService)) private dataService: DataService,
+  ) {}
   @UseGuards(JwtAuthGuard)
   @Get('/violators/:id')
   async getViolator(@Param() { id }: { id: string }) {
@@ -42,6 +48,12 @@ export class StorageController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Post('/violators/ids')
+  async getViolatorsByIds(@MessageBody() { id }: { id: string[] }) {
+    return await this.storageService.getViolatorsByIds(id);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Get('/reports/:id')
   async getReport(@Param() { id }: { id: string }) {
     return await this.storageService.getReport(id);
@@ -51,7 +63,7 @@ export class StorageController {
   @Post('/reports')
   async getReports(@MessageBody() body: GetReportsDto) {
     const { from, to, types, entitiesRange, violatorsRange } = body;
-    return await this.storageService.getReports(
+    return await this.dataService.getReportData(
       from,
       to,
       types,
