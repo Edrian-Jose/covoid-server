@@ -159,24 +159,45 @@ export class DataService {
     entitiesRange: [number, number] = [0, 100],
     violatorsRange: [number, number] = [0, 100],
   ) {
-    return await this.reportModel
-      .find({
-        createdAt: {
-          $gte: moment(from),
-          $lte: moment(to),
-        },
-        type: { $in: types },
-        entitiesCount: {
-          $gte: entitiesRange[0],
-          $lte: entitiesRange[1],
-        },
-        violatorsCount: {
-          $gte: violatorsRange[0],
-          $lte: violatorsRange[1],
-        },
-      })
-      .sort('-createdAt')
-      .exec();
+    if (to < 1000) {
+      return await this.reportModel
+        .find({
+          createdAt: {
+            $gte: moment(from),
+            $lte: moment(to),
+          },
+          type: { $in: types },
+          entitiesCount: {
+            $gte: entitiesRange[0],
+            $lte: entitiesRange[1],
+          },
+          violatorsCount: {
+            $gte: violatorsRange[0],
+            $lte: violatorsRange[1],
+          },
+        })
+        .sort('-createdAt')
+        .exec();
+    } else {
+      return await this.reportModel
+        .find({
+          createdAt: {
+            $gte: moment(from),
+          },
+          type: { $in: types },
+          entitiesCount: {
+            $gte: entitiesRange[0],
+            $lte: entitiesRange[1],
+          },
+          violatorsCount: {
+            $gte: violatorsRange[0],
+            $lte: violatorsRange[1],
+          },
+        })
+        .sort('-createdAt')
+        .limit(to)
+        .exec();
+    }
   }
 
   async setCountData(

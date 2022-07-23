@@ -71,4 +71,17 @@ export class StorageController {
       violatorsRange,
     );
   }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('/reports/populated')
+  async getPopulatedReports(@MessageBody() body: GetReportsDto) {
+    const { from, to, types, entitiesRange, violatorsRange } = body;
+    return await this.storageService.getReports(
+      from,
+      to,
+      types,
+      entitiesRange,
+      violatorsRange,
+    );
+  }
 }
