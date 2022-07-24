@@ -120,9 +120,9 @@ export class DataService {
 
     const _report = new this.reportModel(report);
     report._id = _report._id;
-    const reportDoc = await _report.save();
-    reportDoc.violators = violators;
-    this.server.emit('auto:data:report', reportDoc);
+    await _report.save();
+
+    this.server.emit('auto:data:report', report);
     this.storageService.storeReport(report);
   }
 
