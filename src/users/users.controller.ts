@@ -85,7 +85,7 @@ export class UsersController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Put()
+  @Put('/update')
   async updateUser(@Body() userBody: UpdateUserDto, @Request() req) {
     const user = await this.userService.findByEmail(req.user.email);
     if (!user) {

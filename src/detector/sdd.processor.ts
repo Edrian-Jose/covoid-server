@@ -17,7 +17,9 @@ export default async function (job: Job, cb: DoneCallback) {
   try {
     if (!model) {
       tf.getBackend();
-      model = await CocoSsd.load();
+      model = await CocoSsd.load({
+        modelUrl: `http://localhost:4000/models/cocossd/model.json`,
+      });
     }
   } catch (error) {
     console.log(error);

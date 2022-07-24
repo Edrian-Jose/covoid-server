@@ -19,7 +19,7 @@ export default async function (job: Job, cb: DoneCallback) {
   try {
     if (!faceModel) {
       tf.getBackend();
-      faceModel = await BlazeFace.load();
+      faceModel = await BlazeFace.load({ scoreThreshold: 0.3 });
     }
     // if (!faceModel2) {
     //   tf.getBackend();
