@@ -121,7 +121,7 @@ export class DataService {
     const _report = new this.reportModel(report);
     report._id = _report._id;
     await _report.save();
-
+    report.violators = violators;
     this.server.emit('auto:data:report', report);
     this.storageService.storeReport(report);
   }

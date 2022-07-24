@@ -4,9 +4,11 @@ import { DetectedFace } from './detector';
 import * as BlazeFace from '@tensorflow-models/blazeface';
 import * as cv from 'opencv4nodejs';
 import * as tf from '@tensorflow/tfjs-node';
+// import * as faceapi from '@vladmandic/face-api';
 import mongoose from 'mongoose';
 
 let faceModel: BlazeFace.BlazeFaceModel;
+// let faceModel2 = false;
 let maskedFaceModel: tf.LayersModel;
 const capturers = new Map<string, cv.VideoCapture>();
 
@@ -19,6 +21,13 @@ export default async function (job: Job, cb: DoneCallback) {
       tf.getBackend();
       faceModel = await BlazeFace.load();
     }
+    // if (!faceModel2) {
+    //   tf.getBackend();
+    //   await faceapi.nets.ssdMobilenetv1.loadFromUri(
+    //     `http://localhost:4000/models/weights`,
+    //   );
+    //   faceModel2 = true;
+    // }
     if (!maskedFaceModel) {
       tf.getBackend();
       maskedFaceModel = await tf.loadLayersModel(
@@ -57,6 +66,10 @@ export default async function (job: Job, cb: DoneCallback) {
 
     const imgTensor = tf.tidy(() => tf.node.decodeImage(buffer, 3));
     const detections = await faceModel.estimateFaces(imgTensor as tf.Tensor3D);
+    // const detections = await faceapi.detectAllFaces(
+    //   imgTensor as unknown as faceapi.tf.Tensor4D,
+    // );
+
     imgTensor.dispose();
 
     if (!detections.length) {
@@ -69,6 +82,14 @@ export default async function (job: Job, cb: DoneCallback) {
       const id = new mongoose.Types.ObjectId().toString();
       const [topX, topY] = detection.topLeft as number[];
       const [botX, botY] = detection.bottomRight as number[];
+      // const [topX, topY] = [
+      //   detection.box.topLeft.x,
+      //   detection.box.topLeft.y,
+      // ] as number[];
+      // const [botX, botY] = [
+      //   detection.box.bottomRight.x,
+      //   detection.box.bottomRight.y,
+      // ] as number[];
       const pos1 = 0 <= topX && topX <= img.cols ? topX : 0;
       const pos2 =
         topY - topY * 0.3 >= 0 && topY - topY * 0.3 <= img.rows

@@ -38,6 +38,7 @@
     "@tensorflow-models/blazeface": "^0.0.7",
     "@tensorflow-models/coco-ssd": "^2.2.2",
     "@tensorflow/tfjs-node": "^3.18.0",
+    "@vladmandic/face-api": "^1.6.10",
     "bcrypt": "^5.0.1",
     "bull": "^4.8.4",
     "class-transformer": "^0.5.1",
